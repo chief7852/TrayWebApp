@@ -5,6 +5,9 @@ TrayWebApp은 Windows 시스템 트레이에서 실행되는 미니 브라우저
 ## 미리보기
 
 ![TrayWebApp 메인 브라우저 창](docs/images/traywebapp-main.png)
+![TrayWebApp 메인 브라우저 창2](docs/images/traywebapp-main2.png)
+![TrayWebApp 설정 창](docs/images/traywebapp-setting1.png)
+![TrayWebApp 설정 창2](docs/images/traywebapp-setting2.png)
 
 ## 주요 기능
 
