@@ -2,6 +2,14 @@
 
 TrayWebApp은 Windows 시스템 트레이에서 실행되는 미니 브라우저 앱입니다. macOS의 MenubarX처럼 자주 쓰는 웹앱을 작은 창으로 빠르게 열고, 투명도/항상 위/창 크기/단축키를 조정해서 사용할 수 있습니다.
 
+## 다운로드
+
+최신 배포 파일은 GitHub Releases에서 받을 수 있습니다.
+
+- [설치 파일 다운로드](https://github.com/chief7852/TrayWebApp/releases/latest/download/TrayWebApp-Setup.exe)
+- [포터블 ZIP 다운로드](https://github.com/chief7852/TrayWebApp/releases/latest/download/TrayWebApp-Portable-win-x64.zip)
+- [릴리스 페이지 열기](https://github.com/chief7852/TrayWebApp/releases/latest)
+
 ## 미리보기
 
 ![TrayWebApp 메인 브라우저 창](docs/images/traywebapp-main.png)
