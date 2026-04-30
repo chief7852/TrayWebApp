@@ -144,6 +144,20 @@ chief7852@gmail.com
 
 각 파일은 Desktop 요구사항에 맞춰 1366x768 PNG로 준비되어 있습니다.
 
+## 로고 파일
+
+Store logo / 1:1 Box art 항목에는 아래 PNG 파일을 업로드하세요.
+
+```text
+store-assets/logos/traywebapp-store-logo-300.png
+```
+
+파일 규격:
+
+```text
+300x300 PNG
+```
+
 ## PaxListing 오류 체크리스트
 
 1. Store listings에서 언어가 `Incomplete`인지 확인합니다.
