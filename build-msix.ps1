@@ -49,6 +49,33 @@ function Convert-To-AppxVersion {
     return ($parts[0..3] -join ".")
 }
 
+function Assert-ManifestParameter {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+        [Parameter(Mandatory = $true)]
+        [string]$Value
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        throw "$Name is required."
+    }
+
+    if ($Value -match "[<>]" -or $Value.Contains("Partner Center")) {
+        throw "$Name has a placeholder value: '$Value'. Replace the sample text with the exact value from Partner Center. Do not include < or >."
+    }
+
+    if ($Name -eq "PackageIdentityName" -and $Value -match "\s") {
+        throw "$Name must not contain spaces: '$Value'. Use the exact package identity name from Partner Center."
+    }
+}
+
+function Escape-XmlValue {
+    param([string]$Value)
+
+    return [System.Security.SecurityElement]::Escape($Value)
+}
+
 function New-LogoAsset {
     param(
         [Parameter(Mandatory = $true)]
@@ -85,6 +112,10 @@ function New-LogoAsset {
 $repoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $repoRoot
 
+Assert-ManifestParameter -Name "PackageIdentityName" -Value $PackageIdentityName
+Assert-ManifestParameter -Name "Publisher" -Value $Publisher
+Assert-ManifestParameter -Name "PublisherDisplayName" -Value $PublisherDisplayName
+
 $appxVersion = Convert-To-AppxVersion $Version
 $makeAppx = Find-Tool "makeappx.exe"
 $projectPath = Join-Path $repoRoot "src\TrayWebApp.App\TrayWebApp.App.csproj"
@@ -120,6 +151,10 @@ if (-not $SkipPublish) {
         -p:PublishTrimmed=false `
         -p:DebugType=None `
         -p:DebugSymbols=false
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "dotnet publish failed with exit code $LASTEXITCODE."
+    }
 }
 
 if (-not (Test-Path (Join-Path $publishDir "TrayWebApp.exe"))) {
@@ -135,9 +170,9 @@ Copy-Item (Join-Path $publishDir "*") $stageDir -Recurse -Force
 New-Item -ItemType Directory -Path $assetsDir -Force | Out-Null
 
 $manifest = Get-Content $manifestTemplatePath -Raw
-$manifest = $manifest.Replace("__PACKAGE_IDENTITY_NAME__", $PackageIdentityName)
-$manifest = $manifest.Replace("__PUBLISHER__", $Publisher)
-$manifest = $manifest.Replace("__PUBLISHER_DISPLAY_NAME__", $PublisherDisplayName)
+$manifest = $manifest.Replace("__PACKAGE_IDENTITY_NAME__", (Escape-XmlValue $PackageIdentityName))
+$manifest = $manifest.Replace("__PUBLISHER__", (Escape-XmlValue $Publisher))
+$manifest = $manifest.Replace("__PUBLISHER_DISPLAY_NAME__", (Escape-XmlValue $PublisherDisplayName))
 $manifest = $manifest.Replace("__VERSION__", $appxVersion)
 $manifestPath = Join-Path $stageDir "AppxManifest.xml"
 Set-Content -Path $manifestPath -Value $manifest -Encoding UTF8
@@ -162,6 +197,9 @@ if (Test-Path $packagePath) {
 
 Write-Host "Packing MSIX with MakeAppx..."
 & $makeAppx pack /d $stageDir /p $packagePath /o
+if ($LASTEXITCODE -ne 0) {
+    throw "MakeAppx failed with exit code $LASTEXITCODE. Check $manifestPath for manifest values."
+}
 
 if (-not $NoUploadPackage) {
     $uploadStageDir = Join-Path $outputRoot "upload"

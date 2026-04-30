@@ -42,13 +42,13 @@ Partner Center에서 앱의 패키지/ID 정보에 들어가 다음 값을 확�
 - Publisher
 - Publisher display name
 
-확인한 값을 아래 명령에 넣습니다.
+확인한 값을 아래 명령에 넣습니다. 아래 예시의 `...` 부분은 설명이 아니라 실제 Partner Center 값으로 바꿔야 합니다. `<`와 `>` 문자는 넣지 않습니다.
 
 ```powershell
 .\build-msix.ps1 `
-  -PackageIdentityName "<Partner Center의 Package Identity Name>" `
-  -Publisher "<Partner Center의 Publisher, 예: CN=...>" `
-  -PublisherDisplayName "<게시자 표시 이름>" `
+  -PackageIdentityName "실제 Package Identity Name" `
+  -Publisher "CN=실제 Publisher 값" `
+  -PublisherDisplayName "실제 게시자 표시 이름" `
   -Version "1.0.0.0"
 ```
 
