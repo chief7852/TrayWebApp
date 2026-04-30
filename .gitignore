@@ -1,0 +1,27 @@
+# Build output
+bin/
+obj/
+publish/
+artifacts/
+.artifacts/
+
+# Visual Studio / Rider
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Debug symbols and logs
+*.pdb
+*.log
+
+# OS files
+Thumbs.db
+Desktop.ini
+
+# Local app data exports
+*.tmp
+*.bak
+*.invalid-*

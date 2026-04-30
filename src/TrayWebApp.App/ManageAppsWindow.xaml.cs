@@ -1,0 +1,237 @@
+using System.Collections.ObjectModel;
+using System.Windows;
+using System.Windows.Input;
+using TrayWebApp.Core.Models;
+using TrayWebApp.Core.Services;
+using MessageBox = System.Windows.MessageBox;
+
+namespace TrayWebApp.App;
+
+/// <summary>
+/// Management window for adding, editing, deleting, and reordering web apps.
+/// </summary>
+public partial class ManageAppsWindow : Window
+{
+    private readonly WebAppStore _webAppStore;
+    private readonly ObservableCollection<WebAppItem> _apps;
+    private WebAppItem? _editingApp;
+    private bool _isNewMode;
+
+    /// <summary>Raised when the app list changes so TrayService can rebuild its menu</summary>
+    public event Action? AppsChanged;
+
+    public ManageAppsWindow(WebAppStore webAppStore)
+    {
+        InitializeComponent();
+        _webAppStore = webAppStore;
+        _apps = new ObservableCollection<WebAppItem>(_webAppStore.Apps);
+        AppListBox.ItemsSource = _apps;
+
+        if (_apps.Count > 0)
+            AppListBox.SelectedIndex = 0;
+        else
+            ClearForm();
+    }
+
+    #region Title Bar
+
+    private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        DragMove();
+    }
+
+    private void CloseButton_Click(object sender, RoutedEventArgs e)
+    {
+        Close();
+    }
+
+    #endregion
+
+    #region List Selection
+
+    private void AppListBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (AppListBox.SelectedItem is WebAppItem app)
+        {
+            LoadAppToForm(app);
+            _editingApp = app;
+            _isNewMode = false;
+            DeleteButton.Visibility = Visibility.Visible;
+            SaveButton.Content = "저장";
+        }
+    }
+
+    #endregion
+
+    #region Form
+
+    private void LoadAppToForm(WebAppItem app)
+    {
+        NameInput.Text = app.Name;
+        UrlInput.Text = app.Url;
+        WidthInput.Text = app.Width.ToString();
+        HeightInput.Text = app.Height.ToString();
+        AlwaysOnTopCheck.IsChecked = app.AlwaysOnTop;
+        UserAgentInput.Text = app.UserAgent;
+    }
+
+    private void ClearForm()
+    {
+        NameInput.Text = "";
+        UrlInput.Text = "https://";
+        WidthInput.Text = "430";
+        HeightInput.Text = "720";
+        AlwaysOnTopCheck.IsChecked = true;
+        UserAgentInput.Text = "desktop";
+        _editingApp = null;
+        _isNewMode = true;
+        DeleteButton.Visibility = Visibility.Collapsed;
+        SaveButton.Content = "추가";
+    }
+
+    #endregion
+
+    #region Buttons
+
+    private void NewButton_Click(object sender, RoutedEventArgs e)
+    {
+        AppListBox.SelectedItem = null;
+        ClearForm();
+        NameInput.Focus();
+    }
+
+    private async void SaveButton_Click(object sender, RoutedEventArgs e)
+    {
+        // Validate
+        var name = NameInput.Text.Trim();
+        var url = UrlInput.Text.Trim();
+
+        if (string.IsNullOrEmpty(name))
+        {
+            MessageBox.Show("이름을 입력하세요.", "입력 확인", MessageBoxButton.OK, MessageBoxImage.Warning);
+            NameInput.Focus();
+            return;
+        }
+
+        if (string.IsNullOrEmpty(url) || url == "https://")
+        {
+            MessageBox.Show("URL을 입력하세요.", "입력 확인", MessageBoxButton.OK, MessageBoxImage.Warning);
+            UrlInput.Focus();
+            return;
+        }
+
+        if (!url.StartsWith("http://") && !url.StartsWith("https://"))
+            url = "https://" + url;
+
+        int.TryParse(WidthInput.Text, out int width);
+        int.TryParse(HeightInput.Text, out int height);
+
+        if (_isNewMode)
+        {
+            // Add new app
+            var newApp = new WebAppItem
+            {
+                Name = name,
+                Url = url,
+                Width = width > 0 ? width : 430,
+                Height = height > 0 ? height : 720,
+                AlwaysOnTop = AlwaysOnTopCheck.IsChecked == true,
+                UserAgent = UserAgentInput.Text.Trim()
+            };
+            _webAppStore.Add(newApp);
+            _apps.Add(newApp);
+            AppListBox.SelectedItem = newApp;
+            await RefreshFaviconAsync(newApp);
+        }
+        else if (_editingApp != null)
+        {
+            // Update existing app
+            _editingApp.Name = name;
+            _editingApp.Url = url;
+            _editingApp.Width = width > 0 ? width : 0;
+            _editingApp.Height = height > 0 ? height : 0;
+            _editingApp.AlwaysOnTop = AlwaysOnTopCheck.IsChecked == true;
+            _editingApp.UserAgent = UserAgentInput.Text.Trim();
+            _webAppStore.Update(_editingApp);
+
+            // Refresh list display
+            var index = AppListBox.SelectedIndex;
+            _apps[index] = _editingApp;
+            AppListBox.SelectedIndex = index;
+            await RefreshFaviconAsync(_editingApp);
+        }
+
+        AppsChanged?.Invoke();
+    }
+
+    private void DeleteButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_editingApp == null) return;
+
+        var result = MessageBox.Show(
+            $"\"{_editingApp.Name}\" 앱을 삭제할까요?",
+            "삭제 확인",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
+
+        if (result == MessageBoxResult.Yes)
+        {
+            _webAppStore.Remove(_editingApp.Id);
+            _apps.Remove(_editingApp);
+            AppsChanged?.Invoke();
+
+            if (_apps.Count > 0)
+                AppListBox.SelectedIndex = 0;
+            else
+                ClearForm();
+        }
+    }
+
+    private void MoveUpButton_Click(object sender, RoutedEventArgs e)
+    {
+        var index = AppListBox.SelectedIndex;
+        if (index <= 0) return;
+
+        var item = _apps[index];
+        _apps.RemoveAt(index);
+        _apps.Insert(index - 1, item);
+        AppListBox.SelectedIndex = index - 1;
+
+        ReorderAndSave();
+    }
+
+    private void MoveDownButton_Click(object sender, RoutedEventArgs e)
+    {
+        var index = AppListBox.SelectedIndex;
+        if (index < 0 || index >= _apps.Count - 1) return;
+
+        var item = _apps[index];
+        _apps.RemoveAt(index);
+        _apps.Insert(index + 1, item);
+        AppListBox.SelectedIndex = index + 1;
+
+        ReorderAndSave();
+    }
+
+    private void ReorderAndSave()
+    {
+        for (int i = 0; i < _apps.Count; i++)
+        {
+            _apps[i].Order = i;
+        }
+        _webAppStore.ReplaceAll(_apps);
+        AppsChanged?.Invoke();
+    }
+
+    private async Task RefreshFaviconAsync(WebAppItem app)
+    {
+        var iconPath = await FaviconService.RefreshAsync(app);
+        if (!string.IsNullOrEmpty(iconPath))
+        {
+            app.IconPath = iconPath;
+            _webAppStore.SetIconPath(app.Id, iconPath);
+        }
+    }
+
+    #endregion
+}
