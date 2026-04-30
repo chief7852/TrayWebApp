@@ -2,6 +2,10 @@
 
 TrayWebApp은 Windows 시스템 트레이에서 실행되는 미니 브라우저 앱입니다. macOS의 MenubarX처럼 자주 쓰는 웹앱을 작은 창으로 빠르게 열고, 투명도/항상 위/창 크기/단축키를 조정해서 사용할 수 있습니다.
 
+## 미리보기
+
+![TrayWebApp 메인 브라우저 창](docs/images/traywebapp-main.png)
+
 ## 주요 기능
 
 - 시스템 트레이 기반 실행
