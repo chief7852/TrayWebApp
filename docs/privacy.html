@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TrayWebApp 개인정보처리방침</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f6f7f9;
+      --surface: #ffffff;
+      --text: #172033;
+      --muted: #5d6878;
+      --border: #d8dde6;
+      --accent: #0067c0;
+      --code: #eef2f7;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #10131a;
+        --surface: #181d29;
+        --text: #edf2f7;
+        --muted: #aab4c2;
+        --border: #30384a;
+        --accent: #55b7ff;
+        --code: #202737;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      line-height: 1.7;
+    }
+
+    main {
+      width: min(920px, calc(100% - 32px));
+      margin: 40px auto;
+      padding: 40px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 32px;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin-top: 36px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      font-size: 21px;
+      letter-spacing: 0;
+    }
+
+    p, li {
+      font-size: 16px;
+    }
+
+    .date {
+      color: var(--muted);
+      margin-bottom: 28px;
+    }
+
+    a {
+      color: var(--accent);
+    }
+
+    code, pre {
+      background: var(--code);
+      border-radius: 6px;
+    }
+
+    code {
+      padding: 2px 5px;
+    }
+
+    pre {
+      padding: 14px;
+      overflow: auto;
+    }
+
+    ul {
+      padding-left: 22px;
+    }
+
+    @media (max-width: 640px) {
+      main {
+        margin: 0;
+        width: 100%;
+        min-height: 100vh;
+        border: 0;
+        border-radius: 0;
+        padding: 28px 20px;
+      }
+
+      h1 {
+        font-size: 26px;
+      }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <h1>TrayWebApp 개인정보처리방침</h1>
+  <p class="date">시행일: 2026년 4월 30일</p>
+
+  <p>TrayWebApp은 Windows 시스템 트레이에서 실행되는 WebView2 기반 미니 브라우저 앱입니다. 본 개인정보처리방침은 TrayWebApp이 어떤 정보를 저장하거나 처리할 수 있는지, 사용자가 이를 어떻게 관리할 수 있는지 설명합니다.</p>
+
+  <h2>1. 요약</h2>
+  <p>TrayWebApp 개발자는 앱 사용자의 개인정보를 별도의 서버로 수집, 판매, 공유하지 않습니다. TrayWebApp은 자체 계정 시스템, 원격 분석, 광고 추적, 결제 기능을 제공하지 않습니다.</p>
+  <p>다만 TrayWebApp은 브라우저 기능을 제공하기 위해 사용자의 PC에 앱 설정, 등록한 웹앱 정보, WebView2 쿠키/캐시/로그인 세션 등을 로컬로 저장할 수 있습니다. 또한 사용자가 TrayWebApp 안에서 접속하는 웹사이트는 각 웹사이트의 개인정보처리방침에 따라 쿠키, 로그인 정보, 입력 내용, 방문 기록 등을 처리할 수 있습니다.</p>
+
+  <h2>2. 앱이 로컬에 저장할 수 있는 정보</h2>
+  <p>TrayWebApp은 기능 제공을 위해 다음 정보를 사용자의 기기 안에 저장할 수 있습니다.</p>
+  <ul>
+    <li>앱 설정: 창 크기, 위치, 투명도, 항상 위 설정, 주소창 표시 여부, 시작 시 실행 여부</li>
+    <li>등록한 웹앱 정보: 이름, URL, 정렬 순서, 앱별 창 크기, User-Agent, 마지막 방문 URL, 마지막 페이지 제목</li>
+    <li>WebView2 데이터: 쿠키, 캐시, 사이트 데이터, 로그인 세션, 브라우징 관련 로컬 데이터</li>
+    <li>파비콘: 등록한 웹앱의 아이콘 이미지</li>
+    <li>다운로드 설정: 사용자가 지정한 다운로드 폴더 경로</li>
+    <li>로그: 오류 진단을 위한 최소한의 앱 로그. 오류 상황에 따라 URL 또는 오류 메시지가 포함될 수 있습니다.</li>
+  </ul>
+  <p>이 정보는 기본적으로 다음 경로에 저장됩니다.</p>
+  <pre>%LOCALAPPDATA%\TrayWebApp</pre>
+
+  <h2>3. 앱이 수집하지 않는 정보</h2>
+  <p>TrayWebApp 개발자는 다음 정보를 별도의 서버로 수집하지 않습니다.</p>
+  <ul>
+    <li>이름, 이메일, 전화번호, 주소</li>
+    <li>결제 정보 또는 금융 정보</li>
+    <li>건강 정보</li>
+    <li>연락처, 사진, 문서, 메시지</li>
+    <li>사용자의 웹사이트 로그인 정보</li>
+    <li>카메라, 마이크, 위치 데이터</li>
+    <li>원격 분석 또는 광고 식별자</li>
+  </ul>
+
+  <h2>4. 웹사이트 및 제3자 서비스</h2>
+  <p>TrayWebApp은 WebView2를 사용해 사용자가 선택한 웹사이트를 표시합니다. 사용자가 TrayWebApp 안에서 Google, YouTube, Notion, ChatGPT 등 제3자 웹사이트에 접속하면, 해당 웹사이트는 자체 개인정보처리방침과 약관에 따라 정보를 수집하거나 처리할 수 있습니다.</p>
+  <p>사용자가 웹사이트에 입력하는 아이디, 비밀번호, 검색어, 메시지, 업로드 파일 등은 해당 웹사이트로 전송될 수 있으며, TrayWebApp 개발자에게 전송되지 않습니다.</p>
+
+  <h2>5. 권한 요청</h2>
+  <p>일부 웹사이트는 카메라, 마이크, 위치, 알림, 클립보드 읽기 등의 권한을 요청할 수 있습니다. TrayWebApp은 WebView2 권한 요청을 사용자에게 표시하고, 사용자의 선택에 따라 허용 또는 거부합니다.</p>
+  <p>권한이 허용된 경우 해당 웹사이트가 관련 기능을 사용할 수 있습니다. TrayWebApp 개발자는 해당 권한으로 얻은 데이터를 별도로 수집하거나 저장하지 않습니다.</p>
+
+  <h2>6. 다운로드</h2>
+  <p>사용자가 웹사이트에서 파일을 다운로드하면 파일은 사용자가 선택한 다운로드 폴더 또는 기본 다운로드 폴더에 저장됩니다. TrayWebApp 개발자는 다운로드한 파일의 내용에 접근하거나 이를 서버로 전송하지 않습니다.</p>
+
+  <h2>7. Windows 시작 시 실행</h2>
+  <p>사용자가 "Windows 시작 시 실행" 옵션을 켜면 TrayWebApp은 Windows 사용자 레지스트리의 시작 프로그램 영역에 앱 실행 경로를 등록합니다.</p>
+  <pre>HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run</pre>
+  <p>이 기능은 자동 실행을 위한 것이며, 개인정보 수집 목적으로 사용되지 않습니다.</p>
+
+  <h2>8. 정보의 공유</h2>
+  <p>TrayWebApp 개발자는 앱에서 로컬로 저장되는 정보를 제3자에게 판매하거나 공유하지 않습니다.</p>
+  <p>단, 다음 경우에는 사용자 정보가 TrayWebApp 외부에서 처리될 수 있습니다.</p>
+  <ul>
+    <li>사용자가 접속한 웹사이트가 자체적으로 정보를 수집하거나 처리하는 경우</li>
+    <li>Microsoft Edge WebView2 Runtime, Windows, Microsoft Store 등 플랫폼 구성요소가 자체 정책에 따라 데이터를 처리하는 경우</li>
+    <li>법률상 요구되는 경우</li>
+  </ul>
+
+  <h2>9. 보관 및 삭제</h2>
+  <p>TrayWebApp의 앱 데이터는 사용자의 기기에 저장되며, 사용자가 삭제하기 전까지 남아 있을 수 있습니다. 앱을 제거해도 <code>%LOCALAPPDATA%\TrayWebApp</code> 폴더가 남아 있으면 설정, 쿠키, 로그인 세션 등이 유지될 수 있습니다.</p>
+  <p>사용자는 다음 방법으로 데이터를 삭제할 수 있습니다.</p>
+  <ul>
+    <li>앱 설정에서 캐시 또는 앱 데이터를 초기화</li>
+    <li>등록한 웹앱 삭제</li>
+    <li>Windows 설정에서 앱 제거</li>
+    <li><code>%LOCALAPPDATA%\TrayWebApp</code> 폴더 직접 삭제</li>
+    <li>WebView2 또는 Edge의 사이트 데이터 관리 기능 사용</li>
+  </ul>
+
+  <h2>10. 보안</h2>
+  <p>TrayWebApp은 사용자의 앱 데이터를 로컬 기기에 저장합니다. 사용자의 Windows 계정, 파일 시스템 권한, Microsoft Edge WebView2 Runtime의 보안 기능이 데이터 보호에 사용됩니다.</p>
+  <p>공용 PC 또는 공유 계정에서 TrayWebApp을 사용할 경우, 웹사이트 로그인 세션과 쿠키가 남아 있을 수 있으므로 사용 후 앱 데이터 삭제 또는 웹사이트 로그아웃을 권장합니다.</p>
+
+  <h2>11. 아동의 개인정보</h2>
+  <p>TrayWebApp은 아동을 대상으로 설계된 앱이 아니며, 개발자는 아동의 개인정보를 고의로 수집하지 않습니다. 사용자가 TrayWebApp 안에서 접속하는 웹사이트는 각 서비스의 연령 제한 및 개인정보처리방침을 따릅니다.</p>
+
+  <h2>12. 개인정보처리방침의 변경</h2>
+  <p>앱 기능이 변경되거나 관련 법령 및 Microsoft Store 정책이 변경되는 경우 본 개인정보처리방침이 업데이트될 수 있습니다. 변경된 내용은 GitHub 저장소 또는 앱 배포 페이지에 게시됩니다.</p>
+
+  <h2>13. 문의</h2>
+  <p>개인정보처리방침 또는 TrayWebApp의 데이터 처리 방식에 대한 문의는 아래 경로로 연락할 수 있습니다.</p>
+  <ul>
+    <li>GitHub: <a href="https://github.com/chief7852/TrayWebApp/issues">https://github.com/chief7852/TrayWebApp/issues</a></li>
+    <li>Email: <a href="mailto:chief7852@gmail.com">chief7852@gmail.com</a></li>
+  </ul>
+</main>
+</body>
+</html>
