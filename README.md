@@ -81,6 +81,22 @@ cd TrayWebApp
 
 Inno Setup 6이 설치되어 있지 않으면 설치 파일은 생성되지 않고, exe와 zip까지만 생성됩니다.
 
+## Microsoft Store용 MSIX 만들기
+
+Microsoft Store 제출에는 EXE 설치 파일 대신 MSIX 패키지를 사용할 수 있습니다.
+
+```powershell
+cd TrayWebApp
+.\build-msix.ps1
+```
+
+생성 위치:
+
+- Store 업로드 권장 파일: `publish\msix\TrayWebApp_1.0.0.0_x64.msixupload`
+- 개별 MSIX 패키지: `publish\msix\TrayWebApp_1.0.0.0_x64.msix`
+
+Store 제출 전에는 Partner Center의 Package Identity Name과 Publisher 값을 넣어 다시 빌드해야 합니다. 자세한 내용은 [MSIX.md](MSIX.md)를 확인하세요.
+
 ## 설치방법
 
 ```text
