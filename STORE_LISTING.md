@@ -149,12 +149,14 @@ chief7852@gmail.com
 Store logo / 1:1 Box art 항목에는 아래 PNG 파일을 업로드하세요.
 
 ```text
+store-assets/logos/traywebapp-store-logo-1080.png
 store-assets/logos/traywebapp-store-logo-300.png
 ```
 
 파일 규격:
 
 ```text
+1080x1080 PNG
 300x300 PNG
 ```
 
