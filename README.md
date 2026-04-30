@@ -73,15 +73,7 @@ cd TrayWebApp
 
 Inno Setup 6이 설치되어 있지 않으면 설치 파일은 생성되지 않고, exe와 zip까지만 생성됩니다.
 
-## 친구에게 배포하는 방법
-
-가장 쉬운 방식은 설치 파일을 전달하는 것입니다.
-
-```text
-publish\installer\TrayWebApp-Setup-1.0.0.exe
-```
-
-친구에게는 다음처럼 안내하면 됩니다.
+## 설치방법
 
 ```text
 1. TrayWebApp-Setup-1.0.0.exe를 실행합니다.
