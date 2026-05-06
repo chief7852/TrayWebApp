@@ -18,6 +18,8 @@ public class TrayService : IDisposable
     private readonly WebAppStore _webAppStore;
     private NotifyIcon? _notifyIcon;
     private WebViewWindow? _webViewWindow;
+    private readonly Dictionary<string, WebViewWindow> _webAppWindows = new();
+    private readonly Dictionary<WebViewWindow, string> _windowAppIds = new();
     private ManageAppsWindow? _manageWindow;
     private SettingsWindow? _settingsWindow;
     private HiddenWindow? _hiddenWindow;
@@ -30,6 +32,36 @@ public class TrayService : IDisposable
     // Common User-Agent strings
     private const string MobileUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
     private const string DesktopUserAgent = "";
+
+    private enum SnapPresetKind
+    {
+        LeftHalf,
+        RightHalf,
+        LeftThird,
+        RightThird,
+        TopHalf,
+        BottomHalf,
+        CenterCompact,
+        CenterLarge
+    }
+
+    private sealed class SnapPreset
+    {
+        public string Name { get; init; } = "";
+        public SnapPresetKind Kind { get; init; }
+    }
+
+    private static readonly SnapPreset[] SnapPresets =
+    {
+        new() { Name = "왼쪽 1/2", Kind = SnapPresetKind.LeftHalf },
+        new() { Name = "오른쪽 1/2", Kind = SnapPresetKind.RightHalf },
+        new() { Name = "왼쪽 1/3", Kind = SnapPresetKind.LeftThird },
+        new() { Name = "오른쪽 1/3", Kind = SnapPresetKind.RightThird },
+        new() { Name = "위쪽 1/2", Kind = SnapPresetKind.TopHalf },
+        new() { Name = "아래쪽 1/2", Kind = SnapPresetKind.BottomHalf },
+        new() { Name = "가운데 소형", Kind = SnapPresetKind.CenterCompact },
+        new() { Name = "가운데 대형", Kind = SnapPresetKind.CenterLarge },
+    };
 
     public TrayService(SettingsStore settingsStore, WebAppStore webAppStore)
     {
@@ -67,6 +99,12 @@ public class TrayService : IDisposable
             HotkeyService.MOD_CONTROL | HotkeyService.MOD_ALT,
             HotkeyService.VK_SPACE,
             () => ToggleWindow());
+
+        // Ctrl+Alt+K: Open app switcher
+        _hotkeyService.Register(
+            HotkeyService.MOD_CONTROL | HotkeyService.MOD_ALT,
+            HotkeyService.VK_K,
+            () => ShowQuickSwitch(GetActiveWindow()));
 
         // Ctrl+Alt+1~9: Quick-launch apps by position
         RegisterAppHotkeys();
@@ -190,7 +228,8 @@ public class TrayService : IDisposable
         menu.Items.Add(header);
         menu.Items.Add(new ToolStripSeparator());
 
-        var openToggle = new ToolStripMenuItem(_webViewWindow?.IsVisible == true ? "창 숨기기" : "창 열기")
+        var activeWindow = GetActiveWindow();
+        var openToggle = new ToolStripMenuItem(activeWindow?.IsVisible == true ? "활성 창 숨기기" : "활성 창 열기")
         {
             ForeColor = Color.White,
             Font = new Font("Segoe UI", 9.5f)
@@ -198,33 +237,33 @@ public class TrayService : IDisposable
         openToggle.Click += (s, e) => ToggleWindow();
         menu.Items.Add(openToggle);
 
-        var reloadCurrent = new ToolStripMenuItem("현재 페이지 새로고침")
+        var reloadCurrent = new ToolStripMenuItem("활성 페이지 새로고침")
         {
-            Enabled = _webViewWindow?.IsLoaded == true,
+            Enabled = activeWindow?.IsLoaded == true,
             ForeColor = Color.White,
             Font = new Font("Segoe UI", 9.5f)
         };
-        reloadCurrent.Click += (s, e) => _webViewWindow?.WebView.CoreWebView2?.Reload();
+        reloadCurrent.Click += (s, e) => GetActiveWindow()?.WebView.CoreWebView2?.Reload();
         menu.Items.Add(reloadCurrent);
 
-        var openExternal = new ToolStripMenuItem("기본 브라우저로 열기")
+        var openExternal = new ToolStripMenuItem("활성 페이지를 기본 브라우저로 열기")
         {
-            Enabled = _webViewWindow?.IsLoaded == true,
+            Enabled = activeWindow?.IsLoaded == true,
             ForeColor = Color.White,
             Font = new Font("Segoe UI", 9.5f)
         };
-        openExternal.Click += (s, e) => _webViewWindow?.OpenCurrentInExternalBrowser();
+        openExternal.Click += (s, e) => GetActiveWindow()?.OpenCurrentInExternalBrowser();
         menu.Items.Add(openExternal);
 
         menu.Items.Add(new ToolStripSeparator());
 
         // Web App entries
-        var lastAppId = _settingsStore.Settings.LastAppId;
         for (int i = 0; i < _webAppStore.Apps.Count; i++)
         {
             var app = _webAppStore.Apps[i];
-            var isActive = app.Id == lastAppId;
-            var prefix = isActive ? "> " : "  ";
+            var isActive = app.Id == _activeAppId;
+            var isOpen = IsAppWindowOpen(app.Id);
+            var prefix = isActive ? "> " : isOpen ? "* " : "  ";
             var shortcutHint = i < 9 ? $"  [Ctrl+Alt+{i + 1}]" : "";
             var item = new ToolStripMenuItem($"{prefix}{app.Name}{shortcutHint}")
             {
@@ -248,6 +287,34 @@ public class TrayService : IDisposable
         }
 
         menu.Items.Add(new ToolStripSeparator());
+
+        var openWindows = GetOpenWindowApps().ToList();
+        if (openWindows.Count > 0)
+        {
+            var openWindowsMenu = new ToolStripMenuItem($"열린 창 ({openWindows.Count})")
+            {
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 9.5f)
+            };
+            openWindowsMenu.DropDown.BackColor = Color.FromArgb(30, 30, 46);
+            openWindowsMenu.DropDown.Renderer = new DarkMenuRenderer();
+
+            foreach (var app in openWindows)
+            {
+                var item = new ToolStripMenuItem(app.Name)
+                {
+                    Tag = app,
+                    Image = LoadMenuImage(app.IconPath),
+                    ForeColor = app.Id == _activeAppId ? Color.FromArgb(0, 210, 255) : Color.White,
+                    Font = new Font("Segoe UI", 9.5f, app.Id == _activeAppId ? System.Drawing.FontStyle.Bold : System.Drawing.FontStyle.Regular)
+                };
+                item.Click += (s, e) => FocusOpenApp(app);
+                openWindowsMenu.DropDownItems.Add(item);
+            }
+
+            menu.Items.Add(openWindowsMenu);
+            menu.Items.Add(new ToolStripSeparator());
+        }
 
         var recentApps = _webAppStore.Apps
             .Where(a => a.LastUsedAtUtc.HasValue)
@@ -304,6 +371,27 @@ public class TrayService : IDisposable
         }
         menu.Items.Add(presetsMenu);
 
+        var snapMenu = new ToolStripMenuItem("창 배치")
+        {
+            ForeColor = Color.White,
+            Font = new Font("Segoe UI", 9.5f)
+        };
+        snapMenu.DropDown.BackColor = Color.FromArgb(30, 30, 46);
+        snapMenu.DropDown.Renderer = new DarkMenuRenderer();
+
+        foreach (var preset in SnapPresets)
+        {
+            var item = new ToolStripMenuItem(preset.Name)
+            {
+                Tag = preset,
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 9.5f)
+            };
+            item.Click += OnSnapPresetSelected;
+            snapMenu.DropDownItems.Add(item);
+        }
+        menu.Items.Add(snapMenu);
+
         var opacityMenu = new ToolStripMenuItem("투명도")
         {
             ForeColor = Color.White,
@@ -341,11 +429,12 @@ public class TrayService : IDisposable
                 settings.HideOnDeactivate = true;
             });
 
-            if (_webViewWindow != null)
+            foreach (var window in GetLoadedWindows())
             {
-                _webViewWindow.SetVisualOpacity(0.45);
-                SetAlwaysOnTop(true);
+                window.SetVisualOpacity(0.45);
+                window.SetAlwaysOnTop(true);
             }
+            SetAlwaysOnTop(true);
 
             RebuildMenu();
         };
@@ -460,15 +549,26 @@ public class TrayService : IDisposable
     {
         if (sender is ToolStripMenuItem menuItem && menuItem.Tag is WindowPreset preset)
         {
-            EnsureWindowCreated();
-            _webViewWindow!.Width = preset.Width;
-            _webViewWindow.Height = preset.Height;
+            var window = GetOrCreateActiveWindow();
+            window.Width = preset.Width;
+            window.Height = preset.Height;
             _settingsStore.Update(s =>
             {
                 s.WindowWidth = preset.Width;
                 s.WindowHeight = preset.Height;
             });
-            ShowWindow();
+            ShowWindow(window);
+        }
+    }
+
+    private void OnSnapPresetSelected(object? sender, EventArgs e)
+    {
+        if (sender is ToolStripMenuItem menuItem && menuItem.Tag is SnapPreset preset)
+        {
+            var window = GetOrCreateActiveWindow();
+            ApplySnapPreset(window, preset.Kind);
+            SaveWindowState(window);
+            ShowWindow(window, reposition: false);
         }
     }
 
@@ -481,9 +581,9 @@ public class TrayService : IDisposable
 
         _settingsStore.Update(s => s.WindowOpacity = opacity);
 
-        if (_webViewWindow != null)
+        foreach (var window in GetLoadedWindows())
         {
-            _webViewWindow.SetVisualOpacity(opacity);
+            window.SetVisualOpacity(opacity);
         }
 
         RebuildMenu();
@@ -519,6 +619,45 @@ public class TrayService : IDisposable
         _settingsWindow.Show();
     }
 
+    private void OnWebViewWindowPreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (System.Windows.Input.Keyboard.Modifiers != System.Windows.Input.ModifierKeys.Control ||
+            e.Key != System.Windows.Input.Key.K)
+        {
+            return;
+        }
+
+        if (sender is WebViewWindow owner)
+        {
+            ShowQuickSwitch(owner);
+            e.Handled = true;
+        }
+    }
+
+    private void ShowQuickSwitch(WebViewWindow? owner)
+    {
+        if (_webAppStore.Apps.Count == 0)
+        {
+            return;
+        }
+
+        var quickSwitch = new QuickSwitchWindow(_webAppStore.Apps)
+        {
+            Topmost = owner?.IsAlwaysOnTop == true || _settingsStore.Settings.AlwaysOnTop
+        };
+
+        if (owner != null && owner.IsLoaded)
+        {
+            quickSwitch.Owner = owner;
+        }
+
+        if (quickSwitch.ShowDialog() == true && quickSwitch.SelectedApp != null)
+        {
+            OpenApp(quickSwitch.SelectedApp);
+            RebuildMenu();
+        }
+    }
+
     private async void RefreshFaviconIfNeeded(WebAppItem app)
     {
         if (!string.IsNullOrWhiteSpace(app.IconPath) && File.Exists(app.IconPath))
@@ -543,56 +682,62 @@ public class TrayService : IDisposable
         _activeAppId = app.Id;
         _settingsStore.Update(s => s.LastAppId = app.Id);
         _webAppStore.MarkUsed(app.Id);
-        EnsureWindowCreated();
-        NavigateToApp(app);
-        ShowWindow();
+
+        var window = GetOrCreateAppWindow(app, out var created);
+        if (created)
+        {
+            NavigateToApp(window, app);
+        }
+        ShowWindow(window);
         RefreshFaviconIfNeeded(app);
     }
 
     private void ToggleWindow()
     {
-        if (_webViewWindow == null || !_webViewWindow.IsLoaded)
+        var window = GetActiveWindow();
+        if (window == null || !window.IsLoaded)
         {
-            ShowWindow();
+            window = GetOrCreateActiveWindow();
+            ShowWindow(window);
         }
-        else if (_webViewWindow.IsVisible)
+        else if (window.IsVisible)
         {
-            _webViewWindow.Hide();
+            SaveWindowState(window);
+            window.Hide();
         }
         else
         {
-            ShowWindow();
+            ShowWindow(window);
         }
     }
 
-    private void ShowWindow()
+    private void ShowWindow(WebViewWindow window, bool reposition = true)
     {
-        EnsureWindowCreated();
-        _webViewWindow!.OpenNewWindowsExternally = _settingsStore.Settings.OpenNewWindowsExternally;
-        _webViewWindow.SetAddressBarVisible(_settingsStore.Settings.ShowAddressBar);
-        _webViewWindow.SetVisualOpacity(_settingsStore.Settings.WindowOpacity);
-        _webViewWindow!.Show();
-        PositionWindowNearTray();
-        _webViewWindow.Activate();
-        _webViewWindow.BringToTopIfPinned();
+        _webViewWindow = window;
+        _activeAppId = GetAppIdForWindow(window) ?? _activeAppId;
+
+        window.OpenNewWindowsExternally = _settingsStore.Settings.OpenNewWindowsExternally;
+        window.SetAddressBarVisible(_settingsStore.Settings.ShowAddressBar);
+        window.SetVisualOpacity(_settingsStore.Settings.WindowOpacity);
+        window.Show();
+        if (reposition)
+        {
+            PositionWindowNearTray(window);
+        }
+        window.Activate();
+        window.BringToTopIfPinned();
+        UpdateTrayTextForActiveWindow();
     }
 
-    private void EnsureWindowCreated()
+    private WebViewWindow GetOrCreateActiveWindow()
     {
-        if (_webViewWindow != null && _webViewWindow.IsLoaded) return;
+        var activeWindow = GetActiveWindow();
+        if (activeWindow != null && activeWindow.IsLoaded)
+        {
+            return activeWindow;
+        }
 
         var settings = _settingsStore.Settings;
-        _webViewWindow = new WebViewWindow();
-        _webViewWindow.Width = settings.WindowWidth;
-        _webViewWindow.Height = settings.WindowHeight;
-        _webViewWindow.SetAlwaysOnTop(settings.AlwaysOnTop);
-        _webViewWindow.SetVisualOpacity(settings.WindowOpacity);
-        _webViewWindow.OpenNewWindowsExternally = settings.OpenNewWindowsExternally;
-        _webViewWindow.SetAddressBarVisible(settings.ShowAddressBar);
-        _webViewWindow.BrowserStateChanged += OnBrowserStateChanged;
-        _webViewWindow.AlwaysOnTopChanged += OnAlwaysOnTopChanged;
-
-        // Load last used app or first app or default URL
         var lastApp = settings.LastAppId != null
             ? _webAppStore.GetById(settings.LastAppId)
             : null;
@@ -600,57 +745,220 @@ public class TrayService : IDisposable
 
         if (targetApp != null)
         {
-            NavigateToApp(targetApp);
-        }
-        else
-        {
-            _webViewWindow.NavigateTo(settings.DefaultUrl);
+            var window = GetOrCreateAppWindow(targetApp, out var created);
+            if (created)
+            {
+                NavigateToApp(window, targetApp);
+            }
+            return window;
         }
 
-        _webViewWindow.Closing += (s, e) =>
+        var defaultWindow = GetOrCreateWindow("__default", null);
+        _webViewWindow = defaultWindow;
+        defaultWindow.NavigateTo(settings.DefaultUrl);
+        return defaultWindow;
+    }
+
+    private WebViewWindow GetOrCreateAppWindow(WebAppItem app, out bool created)
+    {
+        if (_webAppWindows.TryGetValue(app.Id, out var existing) && existing.IsLoaded)
+        {
+            created = false;
+            _webViewWindow = existing;
+            _activeAppId = app.Id;
+            return existing;
+        }
+
+        created = true;
+        var window = GetOrCreateWindow(app.Id, app);
+        _webAppWindows[app.Id] = window;
+        _windowAppIds[window] = app.Id;
+        _webViewWindow = window;
+        _activeAppId = app.Id;
+        return window;
+    }
+
+    private WebViewWindow GetOrCreateWindow(string windowKey, WebAppItem? app)
+    {
+        if (_webAppWindows.TryGetValue(windowKey, out var existing) && existing.IsLoaded)
+        {
+            return existing;
+        }
+
+        var settings = _settingsStore.Settings;
+        var window = new WebViewWindow(GetUserDataFolder(app))
+        {
+            Width = app?.Width > 0 ? app.Width : settings.WindowWidth,
+            Height = app?.Height > 0 ? app.Height : settings.WindowHeight
+        };
+        window.SetAlwaysOnTop(settings.AlwaysOnTop || app?.AlwaysOnTop == true);
+        window.SetVisualOpacity(settings.WindowOpacity);
+        window.OpenNewWindowsExternally = settings.OpenNewWindowsExternally;
+        window.SetAddressBarVisible(settings.ShowAddressBar);
+        window.BrowserStateChanged += OnBrowserStateChanged;
+        window.AlwaysOnTopChanged += OnAlwaysOnTopChanged;
+        window.PreviewKeyDown += OnWebViewWindowPreviewKeyDown;
+        _webAppWindows[windowKey] = window;
+        _windowAppIds[window] = windowKey;
+
+        window.Closing += (s, e) =>
         {
             if (_settingsStore.Settings.HideOnClose && !_isExiting)
             {
                 e.Cancel = true;
-                _webViewWindow.Hide();
-                SaveWindowState();
+                SaveWindowState(window);
+                window.Hide();
             }
         };
 
-        _webViewWindow.Deactivated += (s, e) =>
+        window.Closed += (s, e) =>
         {
-            if (_settingsStore.Settings.HideOnDeactivate && _webViewWindow.IsVisible && !_webViewWindow.IsAlwaysOnTop)
+            SaveWindowState(window);
+            _webAppWindows.Remove(windowKey);
+            _windowAppIds.Remove(window);
+            if (_webViewWindow == window)
             {
-                _webViewWindow.Hide();
+                _webViewWindow = GetLoadedWindows().FirstOrDefault();
+                _activeAppId = _webViewWindow != null ? GetAppIdForWindow(_webViewWindow) : null;
+            }
+            RebuildMenu();
+        };
+
+        window.Activated += (s, e) =>
+        {
+            _webViewWindow = window;
+            _activeAppId = GetAppIdForWindow(window);
+            UpdateTrayTextForActiveWindow();
+        };
+
+        window.Deactivated += (s, e) =>
+        {
+            if (_settingsStore.Settings.HideOnDeactivate && window.IsVisible && !window.IsAlwaysOnTop)
+            {
+                SaveWindowState(window);
+                window.Hide();
             }
         };
+
+        return window;
+    }
+
+    private static string? GetUserDataFolder(WebAppItem? app)
+    {
+        if (app?.UseIsolatedSession != true)
+        {
+            return null;
+        }
+
+        var safeId = new string(app.Id
+            .Where(ch => char.IsLetterOrDigit(ch) || ch is '-' or '_')
+            .ToArray());
+
+        if (string.IsNullOrWhiteSpace(safeId))
+        {
+            safeId = Guid.NewGuid().ToString("N");
+        }
+
+        return Path.Combine(AppPaths.DataDirectory, "WebView2Profiles", safeId);
+    }
+
+    private WebViewWindow? GetActiveWindow()
+    {
+        if (_webViewWindow != null && _webViewWindow.IsLoaded)
+        {
+            return _webViewWindow;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_activeAppId) &&
+            _webAppWindows.TryGetValue(_activeAppId, out var activeWindow) &&
+            activeWindow.IsLoaded)
+        {
+            _webViewWindow = activeWindow;
+            return activeWindow;
+        }
+
+        _webViewWindow = GetLoadedWindows().FirstOrDefault();
+        _activeAppId = _webViewWindow != null ? GetAppIdForWindow(_webViewWindow) : null;
+        return _webViewWindow;
+    }
+
+    private bool IsAppWindowOpen(string appId)
+    {
+        return _webAppWindows.TryGetValue(appId, out var window) && window.IsLoaded;
+    }
+
+    private IEnumerable<WebViewWindow> GetLoadedWindows()
+    {
+        return _webAppWindows.Values.Where(window => window.IsLoaded).Distinct();
+    }
+
+    private IEnumerable<WebAppItem> GetOpenWindowApps()
+    {
+        foreach (var app in _webAppStore.Apps)
+        {
+            if (IsAppWindowOpen(app.Id))
+            {
+                yield return app;
+            }
+        }
+    }
+
+    private string? GetAppIdForWindow(WebViewWindow window)
+    {
+        return _windowAppIds.TryGetValue(window, out var appId) && appId != "__default"
+            ? appId
+            : null;
+    }
+
+    private void FocusOpenApp(WebAppItem app)
+    {
+        if (_webAppWindows.TryGetValue(app.Id, out var window) && window.IsLoaded)
+        {
+            _activeAppId = app.Id;
+            _webViewWindow = window;
+            _settingsStore.Update(s => s.LastAppId = app.Id);
+            ShowWindow(window);
+        }
+        else
+        {
+            OpenApp(app);
+        }
     }
 
     private void OnBrowserStateChanged(object? sender, BrowserStateChangedEventArgs e)
     {
-        if (string.IsNullOrWhiteSpace(_activeAppId) || _webViewWindow == null)
+        if (sender is not WebViewWindow window)
+        {
+            return;
+        }
+
+        var appId = GetAppIdForWindow(window);
+        if (string.IsNullOrWhiteSpace(appId))
         {
             return;
         }
 
         _webAppStore.UpdateRuntimeState(
-            _activeAppId,
+            appId,
             e.Title,
             e.Url,
-            _webViewWindow.Width,
-            _webViewWindow.Height,
-            _webViewWindow.Left,
-            _webViewWindow.Top,
-            e.ZoomFactor);
+            window.Width,
+            window.Height,
+            window.Left,
+            window.Top,
+            e.ZoomFactor,
+            e.Tabs,
+            e.ActiveTabIndex);
     }
 
     private void OnAlwaysOnTopChanged(object? sender, AlwaysOnTopChangedEventArgs e)
     {
         _settingsStore.Update(s => s.AlwaysOnTop = e.IsAlwaysOnTop);
 
-        if (!string.IsNullOrWhiteSpace(_activeAppId))
+        if (sender is WebViewWindow window)
         {
-            var app = _webAppStore.GetById(_activeAppId);
+            var appId = GetAppIdForWindow(window);
+            var app = !string.IsNullOrWhiteSpace(appId) ? _webAppStore.GetById(appId) : null;
             if (app != null)
             {
                 app.AlwaysOnTop = e.IsAlwaysOnTop;
@@ -675,29 +983,25 @@ public class TrayService : IDisposable
             }
         }
 
-        _webViewWindow?.SetAlwaysOnTop(enabled);
+        GetActiveWindow()?.SetAlwaysOnTop(enabled);
     }
 
-    private void NavigateToApp(WebAppItem app)
+    private void NavigateToApp(WebViewWindow window, WebAppItem app)
     {
-        if (_webViewWindow == null) return;
-
         _activeAppId = app.Id;
+        _webViewWindow = window;
 
         // Apply per-app window size if specified
-        if (app.Width > 0) _webViewWindow.Width = app.Width;
-        if (app.Height > 0) _webViewWindow.Height = app.Height;
-        _webViewWindow.SetAlwaysOnTop(_settingsStore.Settings.AlwaysOnTop || app.AlwaysOnTop);
-        _webViewWindow.Title = $"{app.Name} - TrayWebApp";
-        if (_notifyIcon != null)
-        {
-            _notifyIcon.Text = TruncateTrayText($"TrayWebApp - {app.Name}");
-        }
-        _webViewWindow.SetHomeUrl(app.Url);
-        _webViewWindow.SetZoomFactor(app.ZoomFactor);
-        _webViewWindow.SetVisualOpacity(_settingsStore.Settings.WindowOpacity);
-        _webViewWindow.OpenNewWindowsExternally = _settingsStore.Settings.OpenNewWindowsExternally;
-        _webViewWindow.SetAddressBarVisible(_settingsStore.Settings.ShowAddressBar);
+        if (app.Width > 0) window.Width = app.Width;
+        if (app.Height > 0) window.Height = app.Height;
+        window.SetAlwaysOnTop(_settingsStore.Settings.AlwaysOnTop || app.AlwaysOnTop);
+        window.Title = $"{app.Name} - TrayWebApp";
+        UpdateTrayTextForActiveWindow();
+        window.SetHomeUrl(app.Url);
+        window.SetZoomFactor(app.ZoomFactor);
+        window.SetVisualOpacity(_settingsStore.Settings.WindowOpacity);
+        window.OpenNewWindowsExternally = _settingsStore.Settings.OpenNewWindowsExternally;
+        window.SetAddressBarVisible(_settingsStore.Settings.ShowAddressBar);
 
         // Apply User-Agent override
         var userAgent = app.UserAgent?.ToLowerInvariant() switch
@@ -706,8 +1010,15 @@ public class TrayService : IDisposable
             "desktop" or "" or null => DesktopUserAgent,
             _ => app.UserAgent  // custom UA string
         };
-        _webViewWindow.SetUserAgent(userAgent);
-        _webViewWindow.NavigateTo(string.IsNullOrWhiteSpace(app.LastVisitedUrl) ? app.Url : app.LastVisitedUrl);
+        window.SetUserAgent(userAgent);
+        if (app.Tabs.Count > 0)
+        {
+            window.RestoreTabs(app.Tabs, app.LastActiveTabIndex, app.Url);
+        }
+        else
+        {
+            window.NavigateTo(string.IsNullOrWhiteSpace(app.LastVisitedUrl) ? app.Url : app.LastVisitedUrl);
+        }
     }
 
     private static string TruncateTrayText(string text)
@@ -715,9 +1026,93 @@ public class TrayService : IDisposable
         return text.Length <= 63 ? text : text[..60] + "...";
     }
 
-    private void PositionWindowNearTray()
+    private void UpdateTrayTextForActiveWindow()
     {
-        if (_webViewWindow == null) return;
+        if (_notifyIcon == null)
+        {
+            return;
+        }
+
+        var activeApp = !string.IsNullOrWhiteSpace(_activeAppId)
+            ? _webAppStore.GetById(_activeAppId)
+            : null;
+        _notifyIcon.Text = TruncateTrayText(activeApp != null
+            ? $"TrayWebApp - {activeApp.Name}"
+            : "TrayWebApp");
+    }
+
+    private static void ApplySnapPreset(WebViewWindow window, SnapPresetKind kind)
+    {
+        var workArea = Screen.FromPoint(Cursor.Position).WorkingArea;
+        const int gap = 12;
+
+        double left;
+        double top;
+        double width;
+        double height;
+
+        switch (kind)
+        {
+            case SnapPresetKind.LeftHalf:
+                left = workArea.Left + gap;
+                top = workArea.Top + gap;
+                width = (workArea.Width / 2.0) - (gap * 1.5);
+                height = workArea.Height - (gap * 2);
+                break;
+            case SnapPresetKind.RightHalf:
+                width = (workArea.Width / 2.0) - (gap * 1.5);
+                height = workArea.Height - (gap * 2);
+                left = workArea.Right - width - gap;
+                top = workArea.Top + gap;
+                break;
+            case SnapPresetKind.LeftThird:
+                left = workArea.Left + gap;
+                top = workArea.Top + gap;
+                width = (workArea.Width / 3.0) - (gap * 1.33);
+                height = workArea.Height - (gap * 2);
+                break;
+            case SnapPresetKind.RightThird:
+                width = (workArea.Width / 3.0) - (gap * 1.33);
+                height = workArea.Height - (gap * 2);
+                left = workArea.Right - width - gap;
+                top = workArea.Top + gap;
+                break;
+            case SnapPresetKind.TopHalf:
+                left = workArea.Left + gap;
+                top = workArea.Top + gap;
+                width = workArea.Width - (gap * 2);
+                height = (workArea.Height / 2.0) - (gap * 1.5);
+                break;
+            case SnapPresetKind.BottomHalf:
+                width = workArea.Width - (gap * 2);
+                height = (workArea.Height / 2.0) - (gap * 1.5);
+                left = workArea.Left + gap;
+                top = workArea.Bottom - height - gap;
+                break;
+            case SnapPresetKind.CenterLarge:
+                width = Math.Min(1100, workArea.Width - (gap * 2));
+                height = Math.Min(820, workArea.Height - (gap * 2));
+                left = workArea.Left + (workArea.Width - width) / 2.0;
+                top = workArea.Top + (workArea.Height - height) / 2.0;
+                break;
+            case SnapPresetKind.CenterCompact:
+            default:
+                width = Math.Min(430, workArea.Width - (gap * 2));
+                height = Math.Min(720, workArea.Height - (gap * 2));
+                left = workArea.Left + (workArea.Width - width) / 2.0;
+                top = workArea.Top + (workArea.Height - height) / 2.0;
+                break;
+        }
+
+        window.Left = Math.Round(left);
+        window.Top = Math.Round(top);
+        window.Width = Math.Round(Math.Max(320, width));
+        window.Height = Math.Round(Math.Max(360, height));
+    }
+
+    private void PositionWindowNearTray(WebViewWindow window)
+    {
+        if (window == null) return;
 
         var settings = _settingsStore.Settings;
         var activeApp = !string.IsNullOrWhiteSpace(_activeAppId)
@@ -725,26 +1120,26 @@ public class TrayService : IDisposable
             : null;
 
         if (activeApp?.WindowX >= 0 && activeApp.WindowY >= 0 &&
-            IsWindowPositionVisible(activeApp.WindowX, activeApp.WindowY, _webViewWindow.Width, _webViewWindow.Height))
+            IsWindowPositionVisible(activeApp.WindowX, activeApp.WindowY, window.Width, window.Height))
         {
-            _webViewWindow.Left = activeApp.WindowX;
-            _webViewWindow.Top = activeApp.WindowY;
+            window.Left = activeApp.WindowX;
+            window.Top = activeApp.WindowY;
             return;
         }
 
         // Use saved global position if valid
         if (settings.WindowX >= 0 && settings.WindowY >= 0 &&
-            IsWindowPositionVisible(settings.WindowX, settings.WindowY, _webViewWindow.Width, _webViewWindow.Height))
+            IsWindowPositionVisible(settings.WindowX, settings.WindowY, window.Width, window.Height))
         {
-            _webViewWindow.Left = settings.WindowX;
-            _webViewWindow.Top = settings.WindowY;
+            window.Left = settings.WindowX;
+            window.Top = settings.WindowY;
             return;
         }
 
         // Position near the taskbar on the monitor where the cursor currently is.
         var workArea = Screen.FromPoint(Cursor.Position).WorkingArea;
-        _webViewWindow.Left = workArea.Right - _webViewWindow.Width - 12;
-        _webViewWindow.Top = workArea.Bottom - _webViewWindow.Height - 12;
+        window.Left = workArea.Right - window.Width - 12;
+        window.Top = workArea.Bottom - window.Height - 12;
     }
 
     private static bool IsWindowPositionVisible(double left, double top, double width, double height)
@@ -760,27 +1155,38 @@ public class TrayService : IDisposable
 
     private void SaveWindowState()
     {
-        if (_webViewWindow == null) return;
+        foreach (var window in GetLoadedWindows().ToList())
+        {
+            SaveWindowState(window);
+        }
+    }
+
+    private void SaveWindowState(WebViewWindow window)
+    {
+        if (!window.IsLoaded) return;
 
         _settingsStore.Update(s =>
         {
-            s.WindowWidth = (int)_webViewWindow.Width;
-            s.WindowHeight = (int)_webViewWindow.Height;
-            s.WindowX = _webViewWindow.Left;
-            s.WindowY = _webViewWindow.Top;
+            s.WindowWidth = (int)window.Width;
+            s.WindowHeight = (int)window.Height;
+            s.WindowX = window.Left;
+            s.WindowY = window.Top;
         });
 
-        if (!string.IsNullOrWhiteSpace(_activeAppId))
+        var appId = GetAppIdForWindow(window);
+        if (!string.IsNullOrWhiteSpace(appId))
         {
             _webAppStore.UpdateRuntimeState(
-                _activeAppId,
-                _webViewWindow.CurrentTitle,
-                _webViewWindow.CurrentUrl,
-                _webViewWindow.Width,
-                _webViewWindow.Height,
-                _webViewWindow.Left,
-                _webViewWindow.Top,
-                _webViewWindow.CurrentZoomFactor);
+                appId,
+                window.CurrentTitle,
+                window.CurrentUrl,
+                window.Width,
+                window.Height,
+                window.Left,
+                window.Top,
+                window.CurrentZoomFactor,
+                window.CurrentTabs,
+                window.CurrentActiveTabIndex);
         }
     }
 
@@ -803,7 +1209,10 @@ public class TrayService : IDisposable
 
         _manageWindow?.Close();
         _settingsWindow?.Close();
-        _webViewWindow?.Close();
+        foreach (var window in GetLoadedWindows().ToList())
+        {
+            window.Close();
+        }
         _hiddenWindow?.Close();
     }
 }

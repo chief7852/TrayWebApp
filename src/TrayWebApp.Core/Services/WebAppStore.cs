@@ -129,7 +129,9 @@ public class WebAppStore
         double height,
         double x,
         double y,
-        double zoomFactor)
+        double zoomFactor,
+        IReadOnlyList<WebAppTabState>? tabs = null,
+        int activeTabIndex = 0)
     {
         var app = GetById(id);
         if (app == null) return;
@@ -141,6 +143,21 @@ public class WebAppStore
         app.WindowX = x;
         app.WindowY = y;
         app.ZoomFactor = Math.Clamp(zoomFactor, 0.25, 3.0);
+        if (tabs != null)
+        {
+            app.Tabs = tabs
+                .Where(tab => !string.IsNullOrWhiteSpace(tab.Url))
+                .Take(5)
+                .Select(tab => new WebAppTabState
+                {
+                    Title = string.IsNullOrWhiteSpace(tab.Title) ? null : tab.Title,
+                    Url = NormalizeUrl(tab.Url)
+                })
+                .ToList();
+            app.LastActiveTabIndex = app.Tabs.Count == 0
+                ? 0
+                : Math.Clamp(activeTabIndex, 0, app.Tabs.Count - 1);
+        }
         app.LastUsedAtUtc = DateTimeOffset.UtcNow;
         Save();
     }
@@ -198,6 +215,30 @@ public class WebAppStore
         app.Height = Math.Clamp(app.Height, 0, 2160);
         app.ZoomFactor = Math.Clamp(app.ZoomFactor <= 0 ? 1.0 : app.ZoomFactor, 0.25, 3.0);
         app.UserAgent = string.IsNullOrWhiteSpace(app.UserAgent) ? "desktop" : app.UserAgent.Trim();
+        app.Tabs = (app.Tabs ?? new List<WebAppTabState>())
+            .Where(tab => !string.IsNullOrWhiteSpace(tab.Url))
+            .Take(5)
+            .Select(tab => new WebAppTabState
+            {
+                Title = string.IsNullOrWhiteSpace(tab.Title) ? null : tab.Title,
+                Url = NormalizeUrl(tab.Url)
+            })
+            .ToList();
+        app.LastActiveTabIndex = app.Tabs.Count == 0
+            ? 0
+            : Math.Clamp(app.LastActiveTabIndex, 0, app.Tabs.Count - 1);
+    }
+
+    private static string NormalizeUrl(string url)
+    {
+        url = url.Trim();
+        if (!url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+            !url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            url = "https://" + url;
+        }
+
+        return url;
     }
 
     private void Reindex()

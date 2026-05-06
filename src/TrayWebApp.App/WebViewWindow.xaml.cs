@@ -4,7 +4,12 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Windows.Controls;
+using System.Windows.Interop;
+using System.Windows.Media;
 using Microsoft.Web.WebView2.Core;
+using Microsoft.Web.WebView2.Wpf;
+using TrayWebApp.Core.Models;
 using TrayWebApp.Core.Services;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 using MessageBox = System.Windows.MessageBox;
@@ -17,6 +22,8 @@ public sealed class BrowserStateChangedEventArgs : EventArgs
     public string? Title { get; init; }
     public string? Url { get; init; }
     public double ZoomFactor { get; init; }
+    public IReadOnlyList<WebAppTabState> Tabs { get; init; } = Array.Empty<WebAppTabState>();
+    public int ActiveTabIndex { get; init; }
 }
 
 public sealed class AlwaysOnTopChangedEventArgs : EventArgs
@@ -24,12 +31,40 @@ public sealed class AlwaysOnTopChangedEventArgs : EventArgs
     public bool IsAlwaysOnTop { get; init; }
 }
 
+internal sealed class BrowserTab
+{
+    public string Id { get; } = Guid.NewGuid().ToString("N");
+    public WebView2 WebView { get; } = new()
+    {
+        DefaultBackgroundColor = System.Drawing.Color.Transparent
+    };
+    public System.Windows.Controls.Button HeaderButton { get; } = new();
+    public TextBlock TitleText { get; } = new();
+    public TextBlock CloseText { get; } = new();
+    public string Title { get; set; } = "New tab";
+    public string? PendingUrl { get; set; }
+    public string? PendingUserAgent { get; set; }
+    public double? PendingZoomFactor { get; set; }
+    public bool IsInitialized { get; set; }
+    public bool IsClosed { get; set; }
+}
+
+internal sealed class ClosedTabState
+{
+    public string Url { get; init; } = "";
+    public string? Title { get; init; }
+}
+
 /// <summary>
 /// WebView2-based floating browser window with custom chrome.
 /// </summary>
 public partial class WebViewWindow : Window
 {
-    private bool _webViewInitialized;
+    private readonly List<BrowserTab> _tabs = new();
+    private readonly Stack<ClosedTabState> _closedTabs = new();
+    private BrowserTab? _activeTab;
+    private CoreWebView2Environment? _webViewEnvironment;
+    private readonly string _userDataFolder;
     private string _pendingUrl = "";
     private string? _pendingUserAgent;
     private double? _pendingZoomFactor;
@@ -45,6 +80,16 @@ public partial class WebViewWindow : Window
     private const uint SwpNoMove = 0x0002;
     private const uint SwpNoActivate = 0x0010;
     private const uint SwpShowWindow = 0x0040;
+    private const int ResizeBorderThickness = 8;
+    private const int WmNcHitTest = 0x0084;
+    private const int HtLeft = 10;
+    private const int HtRight = 11;
+    private const int HtTop = 12;
+    private const int HtTopLeft = 13;
+    private const int HtTopRight = 14;
+    private const int HtBottom = 15;
+    private const int HtBottomLeft = 16;
+    private const int HtBottomRight = 17;
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool SetWindowPos(
@@ -59,79 +104,274 @@ public partial class WebViewWindow : Window
     public event EventHandler<BrowserStateChangedEventArgs>? BrowserStateChanged;
     public event EventHandler<AlwaysOnTopChangedEventArgs>? AlwaysOnTopChanged;
 
-    public string? CurrentUrl => WebView.CoreWebView2?.Source;
-    public string? CurrentTitle => WebView.CoreWebView2?.DocumentTitle;
-    public double CurrentZoomFactor => WebView.ZoomFactor;
+    public WebView2 WebView => _activeTab?.WebView ?? throw new InvalidOperationException("No active browser tab.");
+    public string? CurrentUrl => _activeTab?.WebView.CoreWebView2?.Source;
+    public string? CurrentTitle => _activeTab?.WebView.CoreWebView2?.DocumentTitle;
+    public double CurrentZoomFactor => _activeTab?.WebView.ZoomFactor ?? 1.0;
+    public IReadOnlyList<WebAppTabState> CurrentTabs => GetCurrentTabs();
+    public int CurrentActiveTabIndex => _activeTab == null ? 0 : Math.Max(0, _tabs.IndexOf(_activeTab));
     public bool IsAlwaysOnTop => _isAlwaysOnTop;
     public bool OpenNewWindowsExternally { get; set; }
 
-    public WebViewWindow()
+    public WebViewWindow(string? userDataFolder = null)
     {
+        _userDataFolder = string.IsNullOrWhiteSpace(userDataFolder)
+            ? AppPaths.WebViewDataDirectory
+            : userDataFolder;
         InitializeComponent();
+        SourceInitialized += OnSourceInitialized;
         OpacitySlider.ValueChanged += OpacitySlider_ValueChanged;
         UpdateOpacitySlider(_visualOpacity);
         InitializeWebView();
     }
 
-    private async void InitializeWebView()
+    private void InitializeWebView()
+    {
+        CreateNewTab(_homeUrl);
+    }
+
+    private void OnSourceInitialized(object? sender, EventArgs e)
+    {
+        if (PresentationSource.FromVisual(this) is HwndSource source)
+        {
+            source.AddHook(WindowMessageHook);
+        }
+    }
+
+    private IntPtr WindowMessageHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg != WmNcHitTest || ResizeMode == ResizeMode.NoResize || WindowState == WindowState.Maximized)
+        {
+            return IntPtr.Zero;
+        }
+
+        var screenPoint = GetScreenPoint(lParam);
+        var localPoint = PointFromScreen(screenPoint);
+        var width = ActualWidth;
+        var height = ActualHeight;
+        var border = ResizeBorderThickness;
+
+        var onLeft = localPoint.X >= 0 && localPoint.X < border;
+        var onRight = localPoint.X <= width && localPoint.X > width - border;
+        var onTop = localPoint.Y >= 0 && localPoint.Y < border;
+        var onBottom = localPoint.Y <= height && localPoint.Y > height - border;
+
+        var hitTest = (onLeft, onRight, onTop, onBottom) switch
+        {
+            (true, false, true, false) => HtTopLeft,
+            (false, true, true, false) => HtTopRight,
+            (true, false, false, true) => HtBottomLeft,
+            (false, true, false, true) => HtBottomRight,
+            (true, false, false, false) => HtLeft,
+            (false, true, false, false) => HtRight,
+            (false, false, true, false) => HtTop,
+            (false, false, false, true) => HtBottom,
+            _ => 0
+        };
+
+        if (hitTest == 0)
+        {
+            return IntPtr.Zero;
+        }
+
+        handled = true;
+        return new IntPtr(hitTest);
+    }
+
+    private static System.Windows.Point GetScreenPoint(IntPtr lParam)
+    {
+        var value = lParam.ToInt64();
+        var x = (short)(value & 0xFFFF);
+        var y = (short)((value >> 16) & 0xFFFF);
+        return new System.Windows.Point(x, y);
+    }
+
+    private BrowserTab CreateNewTab(string? initialUrl = null)
+    {
+        var tab = new BrowserTab
+        {
+            PendingUrl = NormalizeUrl(string.IsNullOrWhiteSpace(initialUrl) ? _homeUrl : initialUrl)
+        };
+
+        tab.HeaderButton.Style = (Style)FindResource("TabButton");
+        tab.HeaderButton.Content = CreateTabHeader(tab);
+        tab.HeaderButton.Tag = tab;
+        tab.HeaderButton.Click += (s, e) => ActivateTab(tab);
+        tab.HeaderButton.PreviewMouseDown += (s, e) =>
+        {
+            if (e.ChangedButton == MouseButton.Middle)
+            {
+                CloseTab(tab);
+                e.Handled = true;
+            }
+        };
+        tab.HeaderButton.ContextMenu = CreateTabContextMenu(tab);
+
+        _tabs.Add(tab);
+        TabsHost.Children.Add(tab.HeaderButton);
+        ActivateTab(tab);
+        _ = InitializeTabAsync(tab);
+        return tab;
+    }
+
+    private StackPanel CreateTabHeader(BrowserTab tab)
+    {
+        tab.TitleText.Text = tab.Title;
+        tab.TitleText.TextTrimming = TextTrimming.CharacterEllipsis;
+        tab.TitleText.VerticalAlignment = VerticalAlignment.Center;
+        tab.TitleText.Width = 104;
+
+        tab.CloseText.Text = "x";
+        tab.CloseText.FontSize = 12;
+        tab.CloseText.FontWeight = FontWeights.Bold;
+        tab.CloseText.Margin = new Thickness(8, 0, 0, 0);
+        tab.CloseText.VerticalAlignment = VerticalAlignment.Center;
+        tab.CloseText.Opacity = 0.7;
+        tab.CloseText.Cursor = System.Windows.Input.Cursors.Hand;
+        tab.CloseText.MouseLeftButtonDown += (s, e) =>
+        {
+            CloseTab(tab);
+            e.Handled = true;
+        };
+
+        return new StackPanel
+        {
+            Orientation = System.Windows.Controls.Orientation.Horizontal,
+            Children =
+            {
+                tab.TitleText,
+                tab.CloseText
+            }
+        };
+    }
+
+    private ContextMenu CreateTabContextMenu(BrowserTab tab)
+    {
+        var menu = new ContextMenu
+        {
+            Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(30, 30, 46)),
+            Foreground = System.Windows.Media.Brushes.White
+        };
+
+        var duplicate = CreateTabMenuItem("탭 복제", () => DuplicateTab(tab));
+        var close = CreateTabMenuItem("탭 닫기", () => CloseTab(tab));
+        var closeOthers = CreateTabMenuItem("다른 탭 닫기", () => CloseOtherTabs(tab));
+        var closeRight = CreateTabMenuItem("오른쪽 탭 닫기", () => CloseTabsToRight(tab));
+        var reopen = CreateTabMenuItem("닫은 탭 다시 열기", ReopenClosedTab);
+
+        menu.Opened += (s, e) =>
+        {
+            closeOthers.IsEnabled = _tabs.Count > 1;
+            closeRight.IsEnabled = _tabs.IndexOf(tab) >= 0 && _tabs.IndexOf(tab) < _tabs.Count - 1;
+            reopen.IsEnabled = _closedTabs.Count > 0;
+        };
+
+        menu.Items.Add(duplicate);
+        menu.Items.Add(new Separator());
+        menu.Items.Add(close);
+        menu.Items.Add(closeOthers);
+        menu.Items.Add(closeRight);
+        menu.Items.Add(new Separator());
+        menu.Items.Add(reopen);
+        return menu;
+    }
+
+    private static MenuItem CreateTabMenuItem(string header, Action action)
+    {
+        var item = new MenuItem { Header = header };
+        item.Click += (s, e) => action();
+        return item;
+    }
+
+    private async Task InitializeTabAsync(BrowserTab tab)
     {
         try
         {
-            // Use a persistent user data folder so cookies/sessions survive restarts
             AppPaths.EnsureDirectories();
-            var userDataFolder = AppPaths.WebViewDataDirectory;
+            var userDataFolder = _userDataFolder;
+            Directory.CreateDirectory(userDataFolder);
 
-            var env = await CoreWebView2Environment.CreateAsync(
+            _webViewEnvironment ??= await CoreWebView2Environment.CreateAsync(
                 userDataFolder: userDataFolder);
 
-            await WebView.EnsureCoreWebView2Async(env);
-            _webViewInitialized = true;
+            if (tab.IsClosed)
+            {
+                return;
+            }
 
-            // Configure WebView2 settings
-            var settings = WebView.CoreWebView2.Settings;
+            await tab.WebView.EnsureCoreWebView2Async(_webViewEnvironment);
+            if (tab.IsClosed)
+            {
+                return;
+            }
+
+            tab.IsInitialized = true;
+
+            var settings = tab.WebView.CoreWebView2.Settings;
             settings.IsStatusBarEnabled = false;
             settings.AreDefaultContextMenusEnabled = true;
             settings.IsZoomControlEnabled = true;
             settings.AreDevToolsEnabled = true;
 
-            // Event handlers
-            WebView.CoreWebView2.NavigationStarting += OnNavigationStarting;
-            WebView.CoreWebView2.NavigationCompleted += OnNavigationCompleted;
-            WebView.CoreWebView2.DocumentTitleChanged += OnDocumentTitleChanged;
-            WebView.CoreWebView2.NewWindowRequested += OnNewWindowRequested;
-            WebView.CoreWebView2.SourceChanged += OnSourceChanged;
-            WebView.ZoomFactorChanged += OnZoomFactorChanged;
-            WebView.CoreWebView2.DownloadStarting += OnDownloadStarting;
-            WebView.CoreWebView2.PermissionRequested += OnPermissionRequested;
+            tab.WebView.CoreWebView2.NavigationStarting += OnNavigationStarting;
+            tab.WebView.CoreWebView2.NavigationCompleted += OnNavigationCompleted;
+            tab.WebView.CoreWebView2.DocumentTitleChanged += OnDocumentTitleChanged;
+            tab.WebView.CoreWebView2.NewWindowRequested += OnNewWindowRequested;
+            tab.WebView.CoreWebView2.SourceChanged += OnSourceChanged;
+            tab.WebView.ZoomFactorChanged += OnZoomFactorChanged;
+            tab.WebView.CoreWebView2.DownloadStarting += OnDownloadStarting;
+            tab.WebView.CoreWebView2.PermissionRequested += OnPermissionRequested;
 
-            await WebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(BuildOpacityScript());
+            await tab.WebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(BuildOpacityScript());
 
-            // Apply pending User-Agent if set
-            if (!string.IsNullOrEmpty(_pendingUserAgent))
+            var pendingUserAgent = tab.PendingUserAgent ?? _pendingUserAgent;
+            if (!string.IsNullOrEmpty(pendingUserAgent))
             {
-                WebView.CoreWebView2.Settings.UserAgent = _pendingUserAgent;
-                _pendingUserAgent = null;
+                tab.WebView.CoreWebView2.Settings.UserAgent = pendingUserAgent;
+                tab.PendingUserAgent = null;
+                if (tab == _activeTab)
+                {
+                    _pendingUserAgent = null;
+                }
             }
 
-            if (_pendingZoomFactor.HasValue)
+            var pendingZoomFactor = tab.PendingZoomFactor ?? _pendingZoomFactor;
+            if (pendingZoomFactor.HasValue)
             {
-                SetZoomFactor(_pendingZoomFactor.Value);
-                _pendingZoomFactor = null;
+                tab.WebView.ZoomFactor = Math.Clamp(pendingZoomFactor.Value, 0.25, 3.0);
+                tab.PendingZoomFactor = null;
+                if (tab == _activeTab)
+                {
+                    _pendingZoomFactor = null;
+                }
             }
 
-            // Navigate to pending URL if any
-            if (!string.IsNullOrEmpty(_pendingUrl))
+            var pendingUrl = tab.PendingUrl ?? _pendingUrl;
+            if (!string.IsNullOrEmpty(pendingUrl))
             {
-                WebView.CoreWebView2.Navigate(_pendingUrl);
-                _pendingUrl = "";
+                tab.WebView.CoreWebView2.Navigate(pendingUrl);
+                tab.PendingUrl = null;
+                if (tab == _activeTab)
+                {
+                    _pendingUrl = "";
+                }
             }
 
-            await ApplyWebContentOpacityAsync();
+            await ApplyWebContentOpacityAsync(tab);
 
-            StatusText.Text = "준비됨";
+            if (tab == _activeTab)
+            {
+                StatusText.Text = "준비됨";
+                RefreshActiveTabUi();
+            }
         }
         catch (Exception ex)
         {
+            if (tab.IsClosed)
+            {
+                return;
+            }
+
             AppLogger.Error("Failed to initialize WebView2", ex);
             StatusText.Text = $"WebView2 오류: {ex.Message}";
             MessageBox.Show(
@@ -141,7 +381,6 @@ public partial class WebViewWindow : Window
                 MessageBoxImage.Error);
         }
     }
-
     /// <summary>Navigate the WebView to the specified URL</summary>
     public void NavigateTo(string url)
     {
@@ -150,13 +389,18 @@ public partial class WebViewWindow : Window
         url = NormalizeUrl(url);
         AddressInput.Text = url;
 
-        if (_webViewInitialized && WebView.CoreWebView2 != null)
+        var tab = _activeTab;
+        if (tab?.IsInitialized == true && tab.WebView.CoreWebView2 != null)
         {
-            WebView.CoreWebView2.Navigate(url);
+            tab.WebView.CoreWebView2.Navigate(url);
         }
         else
         {
             _pendingUrl = url;
+            if (tab != null)
+            {
+                tab.PendingUrl = url;
+            }
         }
     }
 
@@ -168,17 +412,63 @@ public partial class WebViewWindow : Window
         }
     }
 
+    public void RestoreTabs(IReadOnlyList<WebAppTabState>? tabs, int activeTabIndex, string fallbackUrl)
+    {
+        var validTabs = tabs?
+            .Where(tab => !string.IsNullOrWhiteSpace(tab.Url))
+            .Take(5)
+            .ToList();
+
+        if (validTabs == null || validTabs.Count == 0)
+        {
+            NavigateTo(fallbackUrl);
+            return;
+        }
+
+        foreach (var tab in _tabs.ToList())
+        {
+            tab.IsClosed = true;
+            TabsHost.Children.Remove(tab.HeaderButton);
+            try
+            {
+                tab.WebView.Dispose();
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Warn($"Failed to dispose tab during restore: {ex.Message}");
+            }
+        }
+
+        _tabs.Clear();
+        _activeTab = null;
+        WebViewHost.Content = null;
+
+        foreach (var savedTab in validTabs)
+        {
+            var tab = CreateNewTab(savedTab.Url);
+            tab.Title = string.IsNullOrWhiteSpace(savedTab.Title) ? "New tab" : savedTab.Title;
+            tab.TitleText.Text = TruncateUrl(tab.Title, 18);
+        }
+
+        ActivateTab(_tabs[Math.Clamp(activeTabIndex, 0, _tabs.Count - 1)]);
+    }
+
     public void SetZoomFactor(double zoomFactor)
     {
         zoomFactor = Math.Clamp(zoomFactor, 0.25, 3.0);
 
-        if (_webViewInitialized)
+        var tab = _activeTab;
+        if (tab?.IsInitialized == true)
         {
-            WebView.ZoomFactor = zoomFactor;
+            tab.WebView.ZoomFactor = zoomFactor;
         }
         else
         {
             _pendingZoomFactor = zoomFactor;
+            if (tab != null)
+            {
+                tab.PendingZoomFactor = zoomFactor;
+            }
         }
     }
 
@@ -244,22 +534,27 @@ public partial class WebViewWindow : Window
     /// <summary>Set the User-Agent string. Empty string restores the default.</summary>
     public void SetUserAgent(string? userAgent)
     {
-        if (_webViewInitialized && WebView.CoreWebView2 != null)
+        var tab = _activeTab;
+        if (tab?.IsInitialized == true && tab.WebView.CoreWebView2 != null)
         {
             if (string.IsNullOrEmpty(userAgent))
             {
                 // Reset to default by setting empty string
                 // WebView2 treats empty as "use default"
-                WebView.CoreWebView2.Settings.UserAgent = "";
+                tab.WebView.CoreWebView2.Settings.UserAgent = "";
             }
             else
             {
-                WebView.CoreWebView2.Settings.UserAgent = userAgent;
+                tab.WebView.CoreWebView2.Settings.UserAgent = userAgent;
             }
         }
         else
         {
             _pendingUserAgent = userAgent;
+            if (tab != null)
+            {
+                tab.PendingUserAgent = userAgent;
+            }
         }
     }
 
@@ -267,12 +562,22 @@ public partial class WebViewWindow : Window
 
     private void OnNavigationStarting(object? sender, CoreWebView2NavigationStartingEventArgs e)
     {
+        if (!IsActiveWebView(sender))
+        {
+            return;
+        }
+
         AddressInput.Text = e.Uri;
         StatusText.Text = $"불러오는 중: {TruncateUrl(e.Uri)}";
     }
 
     private void OnNavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
     {
+        if (!IsActiveWebView(sender))
+        {
+            return;
+        }
+
         StatusText.Text = e.IsSuccess ? "준비됨" : $"오류: {e.WebErrorStatus}";
         _ = ApplyWebContentOpacityAsync();
         RaiseBrowserStateChanged();
@@ -280,9 +585,21 @@ public partial class WebViewWindow : Window
 
     private void OnDocumentTitleChanged(object? sender, object e)
     {
-        var docTitle = WebView.CoreWebView2?.DocumentTitle ?? "";
-        Title = string.IsNullOrEmpty(docTitle) ? "TrayWebApp" : docTitle;
-        RaiseBrowserStateChanged();
+        var tab = GetTabFromCoreWebView(sender);
+        if (tab == null)
+        {
+            return;
+        }
+
+        var docTitle = tab.WebView.CoreWebView2?.DocumentTitle ?? "";
+        tab.Title = string.IsNullOrWhiteSpace(docTitle) ? "New tab" : docTitle;
+        tab.TitleText.Text = TruncateUrl(tab.Title, 18);
+
+        if (tab == _activeTab)
+        {
+            Title = string.IsNullOrEmpty(docTitle) ? "TrayWebApp" : docTitle;
+            RaiseBrowserStateChanged();
+        }
     }
 
     private void OnNewWindowRequested(object? sender, CoreWebView2NewWindowRequestedEventArgs e)
@@ -302,11 +619,16 @@ public partial class WebViewWindow : Window
             return;
         }
 
-        WebView.CoreWebView2.Navigate(e.Uri);
+        CreateNewTab(e.Uri);
     }
 
     private void OnSourceChanged(object? sender, CoreWebView2SourceChangedEventArgs e)
     {
+        if (!IsActiveWebView(sender))
+        {
+            return;
+        }
+
         var source = WebView.CoreWebView2?.Source;
         if (!string.IsNullOrWhiteSpace(source))
         {
@@ -317,6 +639,11 @@ public partial class WebViewWindow : Window
 
     private void OnZoomFactorChanged(object? sender, EventArgs e)
     {
+        if (sender is not WebView2 webView || _activeTab?.WebView != webView)
+        {
+            return;
+        }
+
         _zoomFactor = WebView.ZoomFactor;
         ZoomText.Text = $"{(int)(_zoomFactor * 100)}%";
         RaiseBrowserStateChanged();
@@ -449,6 +776,11 @@ public partial class WebViewWindow : Window
         OpenCurrentInExternalBrowser();
     }
 
+    private void NewTabButton_Click(object sender, RoutedEventArgs e)
+    {
+        CreateNewTab(_homeUrl);
+    }
+
     private void OpacitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (_suppressOpacitySliderEvent)
@@ -539,6 +871,21 @@ public partial class WebViewWindow : Window
         {
             switch (e.Key)
             {
+                case Key.T:
+                    CreateNewTab(_homeUrl);
+                    e.Handled = true;
+                    break;
+                case Key.W:
+                    if (_activeTab != null)
+                    {
+                        CloseTab(_activeTab);
+                    }
+                    e.Handled = true;
+                    break;
+                case Key.Tab:
+                    ActivateNextTab(reverse: false);
+                    e.Handled = true;
+                    break;
                 case Key.L:
                     AddressInput.Focus();
                     AddressInput.SelectAll();
@@ -561,6 +908,16 @@ public partial class WebViewWindow : Window
                     break;
             }
         }
+        else if (Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift) && e.Key == Key.Tab)
+        {
+            ActivateNextTab(reverse: true);
+            e.Handled = true;
+        }
+        else if (Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift) && e.Key == Key.T)
+        {
+            ReopenClosedTab();
+            e.Handled = true;
+        }
     }
 
     #endregion
@@ -571,13 +928,248 @@ public partial class WebViewWindow : Window
         return url[..maxLength] + "...";
     }
 
+    private void ActivateTab(BrowserTab tab)
+    {
+        if (!_tabs.Contains(tab))
+        {
+            return;
+        }
+
+        _activeTab = tab;
+        WebViewHost.Content = tab.WebView;
+        RefreshActiveTabUi();
+    }
+
+    private void CloseTab(BrowserTab tab)
+    {
+        CloseTab(tab, rememberClosed: true);
+    }
+
+    private void CloseTab(BrowserTab tab, bool rememberClosed)
+    {
+        if (!_tabs.Contains(tab))
+        {
+            return;
+        }
+
+        var closedIndex = _tabs.IndexOf(tab);
+        var wasActive = tab == _activeTab;
+        if (rememberClosed)
+        {
+            RememberClosedTab(tab);
+        }
+        tab.IsClosed = true;
+
+        TabsHost.Children.Remove(tab.HeaderButton);
+        _tabs.Remove(tab);
+
+        if (WebViewHost.Content == tab.WebView)
+        {
+            WebViewHost.Content = null;
+        }
+
+        try
+        {
+            tab.WebView.Dispose();
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warn($"Failed to dispose closed tab WebView: {ex.Message}");
+        }
+
+        if (_tabs.Count == 0)
+        {
+            CreateNewTab(_homeUrl);
+            return;
+        }
+
+        if (wasActive)
+        {
+            var nextIndex = Math.Min(closedIndex, _tabs.Count - 1);
+            ActivateTab(_tabs[nextIndex]);
+        }
+        else
+        {
+            RefreshActiveTabUi();
+        }
+    }
+
+    private void RememberClosedTab(BrowserTab tab)
+    {
+        var url = GetPersistableTabUrl(tab);
+        if (!IsHttpUrl(url))
+        {
+            return;
+        }
+
+        _closedTabs.Push(new ClosedTabState
+        {
+            Url = url,
+            Title = string.IsNullOrWhiteSpace(tab.Title) ? null : tab.Title
+        });
+
+        while (_closedTabs.Count > 10)
+        {
+            var retained = _closedTabs.Take(10).Reverse().ToArray();
+            _closedTabs.Clear();
+            foreach (var closedTab in retained)
+            {
+                _closedTabs.Push(closedTab);
+            }
+        }
+    }
+
+    private void DuplicateTab(BrowserTab tab)
+    {
+        var newTab = CreateNewTab(GetPersistableTabUrl(tab));
+        newTab.Title = tab.Title;
+        newTab.TitleText.Text = TruncateUrl(tab.Title, 18);
+    }
+
+    private void CloseOtherTabs(BrowserTab tab)
+    {
+        foreach (var otherTab in _tabs.Where(candidate => candidate != tab).ToList())
+        {
+            CloseTab(otherTab);
+        }
+
+        ActivateTab(tab);
+    }
+
+    private void CloseTabsToRight(BrowserTab tab)
+    {
+        var index = _tabs.IndexOf(tab);
+        if (index < 0)
+        {
+            return;
+        }
+
+        foreach (var rightTab in _tabs.Skip(index + 1).ToList())
+        {
+            CloseTab(rightTab);
+        }
+    }
+
+    private void ReopenClosedTab()
+    {
+        if (_closedTabs.Count == 0)
+        {
+            return;
+        }
+
+        var closedTab = _closedTabs.Pop();
+        var tab = CreateNewTab(closedTab.Url);
+        if (!string.IsNullOrWhiteSpace(closedTab.Title))
+        {
+            tab.Title = closedTab.Title;
+            tab.TitleText.Text = TruncateUrl(closedTab.Title, 18);
+        }
+    }
+
+    private void ActivateNextTab(bool reverse)
+    {
+        if (_tabs.Count <= 1 || _activeTab == null)
+        {
+            return;
+        }
+
+        var currentIndex = _tabs.IndexOf(_activeTab);
+        if (currentIndex < 0)
+        {
+            currentIndex = 0;
+        }
+
+        var nextIndex = reverse
+            ? (currentIndex - 1 + _tabs.Count) % _tabs.Count
+            : (currentIndex + 1) % _tabs.Count;
+        ActivateTab(_tabs[nextIndex]);
+    }
+
+    private void RefreshActiveTabUi()
+    {
+        foreach (var tab in _tabs)
+        {
+            var isActive = tab == _activeTab;
+            tab.HeaderButton.Background = new SolidColorBrush(isActive
+                ? System.Windows.Media.Color.FromRgb(45, 45, 63)
+                : System.Windows.Media.Color.FromRgb(37, 37, 56));
+            tab.HeaderButton.Foreground = new SolidColorBrush(isActive
+                ? Colors.White
+                : System.Windows.Media.Color.FromRgb(200, 200, 216));
+            tab.HeaderButton.BorderBrush = new SolidColorBrush(isActive
+                ? System.Windows.Media.Color.FromRgb(0, 210, 255)
+                : System.Windows.Media.Color.FromRgb(64, 64, 96));
+        }
+
+        if (_activeTab == null)
+        {
+            return;
+        }
+
+        AddressInput.Text = _activeTab.WebView.CoreWebView2?.Source ?? _activeTab.PendingUrl ?? "";
+        ZoomText.Text = $"{(int)(_activeTab.WebView.ZoomFactor * 100)}%";
+        Title = string.IsNullOrWhiteSpace(_activeTab.Title) ? "TrayWebApp" : _activeTab.Title;
+        _ = ApplyWebContentOpacityAsync(_activeTab);
+        RaiseBrowserStateChanged();
+    }
+
+    private BrowserTab? GetTabFromCoreWebView(object? sender)
+    {
+        return sender is CoreWebView2 coreWebView
+            ? _tabs.FirstOrDefault(tab => tab.WebView.CoreWebView2 == coreWebView)
+            : null;
+    }
+
+    private bool IsActiveWebView(object? sender)
+    {
+        return GetTabFromCoreWebView(sender) == _activeTab;
+    }
+
+    private IReadOnlyList<WebAppTabState> GetCurrentTabs()
+    {
+        return _tabs
+            .Select(tab => new WebAppTabState
+            {
+                Title = string.IsNullOrWhiteSpace(tab.Title) ? null : tab.Title,
+                Url = GetPersistableTabUrl(tab)
+            })
+            .Where(tab => !string.IsNullOrWhiteSpace(tab.Url))
+            .Take(5)
+            .ToList();
+    }
+
+    private string GetPersistableTabUrl(BrowserTab tab)
+    {
+        var source = tab.WebView.CoreWebView2?.Source;
+        if (IsHttpUrl(source))
+        {
+            return source!;
+        }
+
+        if (IsHttpUrl(tab.PendingUrl))
+        {
+            return tab.PendingUrl!;
+        }
+
+        return _homeUrl;
+    }
+
+    private static bool IsHttpUrl(string? url)
+    {
+        return !string.IsNullOrWhiteSpace(url) &&
+            (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+             url.StartsWith("https://", StringComparison.OrdinalIgnoreCase));
+    }
+
     private void RaiseBrowserStateChanged()
     {
         BrowserStateChanged?.Invoke(this, new BrowserStateChangedEventArgs
         {
             Title = CurrentTitle,
             Url = CurrentUrl,
-            ZoomFactor = CurrentZoomFactor
+            ZoomFactor = CurrentZoomFactor,
+            Tabs = CurrentTabs,
+            ActiveTabIndex = CurrentActiveTabIndex
         });
     }
 
@@ -628,14 +1220,24 @@ public partial class WebViewWindow : Window
 
     private async Task ApplyWebContentOpacityAsync()
     {
-        if (!_webViewInitialized || WebView.CoreWebView2 == null)
+        if (_activeTab == null)
+        {
+            return;
+        }
+
+        await ApplyWebContentOpacityAsync(_activeTab);
+    }
+
+    private async Task ApplyWebContentOpacityAsync(BrowserTab tab)
+    {
+        if (!tab.IsInitialized || tab.WebView.CoreWebView2 == null)
         {
             return;
         }
 
         try
         {
-            await WebView.CoreWebView2.ExecuteScriptAsync(BuildOpacityScript());
+            await tab.WebView.CoreWebView2.ExecuteScriptAsync(BuildOpacityScript());
         }
         catch (Exception ex)
         {

@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Input;
 using TrayWebApp.Core.Models;
 using TrayWebApp.Core.Services;
+using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 using MessageBox = System.Windows.MessageBox;
 
 namespace TrayWebApp.App;
@@ -14,6 +15,7 @@ public partial class ManageAppsWindow : Window
 {
     private readonly WebAppStore _webAppStore;
     private readonly ObservableCollection<WebAppItem> _apps;
+    private readonly ObservableCollection<WebAppItem> _visibleApps;
     private WebAppItem? _editingApp;
     private bool _isNewMode;
 
@@ -25,9 +27,10 @@ public partial class ManageAppsWindow : Window
         InitializeComponent();
         _webAppStore = webAppStore;
         _apps = new ObservableCollection<WebAppItem>(_webAppStore.Apps);
-        AppListBox.ItemsSource = _apps;
+        _visibleApps = new ObservableCollection<WebAppItem>(_apps);
+        AppListBox.ItemsSource = _visibleApps;
 
-        if (_apps.Count > 0)
+        if (_visibleApps.Count > 0)
             AppListBox.SelectedIndex = 0;
         else
             ClearForm();
@@ -43,6 +46,57 @@ public partial class ManageAppsWindow : Window
     private void CloseButton_Click(object sender, RoutedEventArgs e)
     {
         Close();
+    }
+
+    #endregion
+
+    #region Search
+
+    private void SearchInput_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    {
+        RefreshVisibleApps(_editingApp);
+    }
+
+    private void SearchInput_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape)
+        {
+            SearchInput.Clear();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Down && _visibleApps.Count > 0)
+        {
+            AppListBox.Focus();
+            AppListBox.SelectedIndex = Math.Max(0, AppListBox.SelectedIndex);
+            e.Handled = true;
+        }
+    }
+
+    private void RefreshVisibleApps(WebAppItem? preferredSelection = null)
+    {
+        var query = SearchInput.Text.Trim();
+        var filtered = string.IsNullOrWhiteSpace(query)
+            ? _apps
+            : _apps.Where(app =>
+                app.Name.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                app.Url.Contains(query, StringComparison.OrdinalIgnoreCase));
+
+        _visibleApps.Clear();
+        foreach (var app in filtered)
+        {
+            _visibleApps.Add(app);
+        }
+
+        if (_visibleApps.Count == 0)
+        {
+            AppListBox.SelectedItem = null;
+            ClearForm();
+            return;
+        }
+
+        AppListBox.SelectedItem = preferredSelection != null && _visibleApps.Contains(preferredSelection)
+            ? preferredSelection
+            : _visibleApps[0];
     }
 
     #endregion
@@ -72,6 +126,7 @@ public partial class ManageAppsWindow : Window
         WidthInput.Text = app.Width.ToString();
         HeightInput.Text = app.Height.ToString();
         AlwaysOnTopCheck.IsChecked = app.AlwaysOnTop;
+        IsolatedSessionCheck.IsChecked = app.UseIsolatedSession;
         UserAgentInput.Text = app.UserAgent;
     }
 
@@ -82,6 +137,7 @@ public partial class ManageAppsWindow : Window
         WidthInput.Text = "430";
         HeightInput.Text = "720";
         AlwaysOnTopCheck.IsChecked = true;
+        IsolatedSessionCheck.IsChecked = false;
         UserAgentInput.Text = "desktop";
         _editingApp = null;
         _isNewMode = true;
@@ -136,10 +192,12 @@ public partial class ManageAppsWindow : Window
                 Width = width > 0 ? width : 430,
                 Height = height > 0 ? height : 720,
                 AlwaysOnTop = AlwaysOnTopCheck.IsChecked == true,
+                UseIsolatedSession = IsolatedSessionCheck.IsChecked == true,
                 UserAgent = UserAgentInput.Text.Trim()
             };
             _webAppStore.Add(newApp);
             _apps.Add(newApp);
+            RefreshVisibleApps(newApp);
             AppListBox.SelectedItem = newApp;
             await RefreshFaviconAsync(newApp);
         }
@@ -151,13 +209,17 @@ public partial class ManageAppsWindow : Window
             _editingApp.Width = width > 0 ? width : 0;
             _editingApp.Height = height > 0 ? height : 0;
             _editingApp.AlwaysOnTop = AlwaysOnTopCheck.IsChecked == true;
+            _editingApp.UseIsolatedSession = IsolatedSessionCheck.IsChecked == true;
             _editingApp.UserAgent = UserAgentInput.Text.Trim();
             _webAppStore.Update(_editingApp);
 
             // Refresh list display
-            var index = AppListBox.SelectedIndex;
-            _apps[index] = _editingApp;
-            AppListBox.SelectedIndex = index;
+            var index = _apps.IndexOf(_editingApp);
+            if (index >= 0)
+            {
+                _apps[index] = _editingApp;
+            }
+            RefreshVisibleApps(_editingApp);
             await RefreshFaviconAsync(_editingApp);
         }
 
@@ -179,38 +241,36 @@ public partial class ManageAppsWindow : Window
             _webAppStore.Remove(_editingApp.Id);
             _apps.Remove(_editingApp);
             AppsChanged?.Invoke();
-
-            if (_apps.Count > 0)
-                AppListBox.SelectedIndex = 0;
-            else
-                ClearForm();
+            RefreshVisibleApps();
         }
     }
 
     private void MoveUpButton_Click(object sender, RoutedEventArgs e)
     {
-        var index = AppListBox.SelectedIndex;
+        if (AppListBox.SelectedItem is not WebAppItem item) return;
+
+        var index = _apps.IndexOf(item);
         if (index <= 0) return;
 
-        var item = _apps[index];
         _apps.RemoveAt(index);
         _apps.Insert(index - 1, item);
-        AppListBox.SelectedIndex = index - 1;
 
         ReorderAndSave();
+        RefreshVisibleApps(item);
     }
 
     private void MoveDownButton_Click(object sender, RoutedEventArgs e)
     {
-        var index = AppListBox.SelectedIndex;
+        if (AppListBox.SelectedItem is not WebAppItem item) return;
+
+        var index = _apps.IndexOf(item);
         if (index < 0 || index >= _apps.Count - 1) return;
 
-        var item = _apps[index];
         _apps.RemoveAt(index);
         _apps.Insert(index + 1, item);
-        AppListBox.SelectedIndex = index + 1;
 
         ReorderAndSave();
+        RefreshVisibleApps(item);
     }
 
     private void ReorderAndSave()

@@ -185,6 +185,7 @@
             <Grid Grid.Row="1" Margin="16">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
@@ -205,8 +206,15 @@
                     </StackPanel>
                 </Grid>
 
+                <TextBox Grid.Row="1" x:Name="SearchInput"
+                         Style="{StaticResource DarkTextBox}"
+                         Margin="0,0,0,8"
+                         TextChanged="SearchInput_TextChanged"
+                         KeyDown="SearchInput_KeyDown"
+                         ToolTip="앱 이름 또는 URL 검색"/>
+
                 <!-- App List -->
-                <ListBox Grid.Row="1" x:Name="AppListBox"
+                <ListBox Grid.Row="2" x:Name="AppListBox"
                          Background="Transparent" BorderThickness="0"
                          ItemContainerStyle="{StaticResource AppListItem}"
                          SelectionChanged="AppListBox_SelectionChanged"
@@ -242,10 +250,11 @@
                 </ListBox>
 
                 <!-- Edit Form -->
-                <Border Grid.Row="2" Background="#252538" CornerRadius="10"
+                <Border Grid.Row="3" Background="#252538" CornerRadius="10"
                         Padding="16" Margin="0,8,0,8">
                     <Grid x:Name="EditForm">
                         <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
@@ -295,16 +304,22 @@
                                   Content="항상 위" Style="{StaticResource DarkCheckBox}"
                                   Margin="0,0,0,8"/>
 
+                        <CheckBox Grid.Row="4" Grid.Column="1" x:Name="IsolatedSessionCheck"
+                                  Content="독립 세션 사용"
+                                  Style="{StaticResource DarkCheckBox}"
+                                  ToolTip="이 앱만 별도 쿠키/로그인 저장소를 사용합니다"
+                                  Margin="0,0,0,8"/>
+
                         <!-- User-Agent -->
-                        <TextBlock Grid.Row="4" Grid.Column="0" Text="UA"
+                        <TextBlock Grid.Row="5" Grid.Column="0" Text="UA"
                                    Foreground="#A0A0B8" FontSize="13" FontFamily="Segoe UI"
                                    VerticalAlignment="Center" Margin="0,0,0,8"/>
-                        <TextBox Grid.Row="4" Grid.Column="1" x:Name="UserAgentInput"
+                        <TextBox Grid.Row="5" Grid.Column="1" x:Name="UserAgentInput"
                                  Style="{StaticResource DarkTextBox}" Margin="0,0,0,8"
                                   ToolTip="desktop, mobile 또는 사용자 지정 UA 문자열"/>
 
                         <!-- Buttons -->
-                        <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal"
+                        <StackPanel Grid.Row="6" Grid.Column="1" Orientation="Horizontal"
                                     HorizontalAlignment="Right">
                             <Button x:Name="DeleteButton" Content="삭제"
                                     Style="{StaticResource DangerButton}"
@@ -322,7 +337,7 @@
                 </Border>
 
                 <!-- Bottom info -->
-                <TextBlock Grid.Row="3" Foreground="#505068" FontSize="11" FontFamily="Segoe UI"
+                <TextBlock Grid.Row="4" Foreground="#505068" FontSize="11" FontFamily="Segoe UI"
                            HorizontalAlignment="Center" Margin="0,4,0,0">
                     <Run Text="Tip: Right-click the tray icon to switch between apps"/>
                 </TextBlock>

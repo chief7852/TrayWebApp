@@ -63,6 +63,43 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <Style x:Key="TabButton" TargetType="Button">
+            <Setter Property="Background" Value="#252538"/>
+            <Setter Property="Foreground" Value="#C8C8D8"/>
+            <Setter Property="BorderBrush" Value="#404060"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,3"/>
+            <Setter Property="Margin" Value="2,3,0,2"/>
+            <Setter Property="MinWidth" Value="92"/>
+            <Setter Property="MaxWidth" Value="150"/>
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="5,5,0,0"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#34344A"/>
+                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Border CornerRadius="12" Background="#1E1E2E" BorderBrush="#404060" BorderThickness="1"
@@ -75,6 +112,7 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="76"/>
                 <RowDefinition Height="*"/>
+                <RowDefinition Height="30"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
@@ -98,10 +136,36 @@
                                 Click="BackButton_Click" ToolTip="뒤로"/>
                         <Button Content="&gt;" Style="{StaticResource ToolbarButton}"
                                 Click="ForwardButton_Click" ToolTip="앞으로"/>
-                        <Button Content="R" Style="{StaticResource ToolbarButton}"
-                                Click="RefreshButton_Click" ToolTip="새로고침" FontSize="12"/>
-                        <Button Content="H" Style="{StaticResource ToolbarButton}"
-                                Click="HomeButton_Click" ToolTip="홈" FontSize="12"/>
+                        <Button Style="{StaticResource ToolbarButton}"
+                                Click="RefreshButton_Click" ToolTip="새로고침">
+                            <Viewbox Width="15" Height="15">
+                                <Canvas Width="18" Height="18">
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                          StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                          StrokeLineJoin="Round" Fill="Transparent"
+                                          Data="M14,6 C13,3.8 10.7,2.4 8.2,2.7 C5.2,3 3,5.5 3,8.5 C3,12.1 5.9,15 9.5,15 C12,15 14.1,13.6 15.2,11.5"/>
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                          StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                          StrokeLineJoin="Round" Fill="Transparent"
+                                          Data="M14,2.7 L14,6.2 L10.5,6.2"/>
+                                </Canvas>
+                            </Viewbox>
+                        </Button>
+                        <Button Style="{StaticResource ToolbarButton}"
+                                Click="HomeButton_Click" ToolTip="홈">
+                            <Viewbox Width="15" Height="15">
+                                <Canvas Width="18" Height="18">
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                          StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                          StrokeLineJoin="Round" Fill="Transparent"
+                                          Data="M3,8.4 L9,3 L15,8.4"/>
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                          StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                          StrokeLineJoin="Round" Fill="Transparent"
+                                          Data="M5,7.6 L5,15 L13,15 L13,7.6"/>
+                                </Canvas>
+                            </Viewbox>
+                        </Button>
                     </StackPanel>
 
                     <!-- Opacity control -->
@@ -127,10 +191,48 @@
 
                     <!-- Window controls -->
                     <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal" Margin="0,0,4,0">
-                        <Button x:Name="PinButton" Content="고정" Style="{StaticResource ToolbarButton}"
-                                Click="PinButton_Click" ToolTip="항상 위 전환" FontSize="12"/>
-                        <Button Content="열기" Style="{StaticResource ToolbarButton}"
-                                Click="OpenExternalButton_Click" ToolTip="기본 브라우저로 열기" FontSize="12"/>
+                        <Button x:Name="PinButton" Style="{StaticResource ToolbarButton}"
+                                Click="PinButton_Click" ToolTip="항상 위">
+                            <Viewbox Width="15" Height="15">
+                                <Canvas Width="18" Height="18">
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                          StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                          StrokeLineJoin="Round" Fill="Transparent"
+                                          Data="M10.5,2.8 L15.2,7.5"/>
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                          StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                          StrokeLineJoin="Round" Fill="Transparent"
+                                          Data="M12.6,4.9 L7.4,10.1"/>
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                          StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                          StrokeLineJoin="Round" Fill="Transparent"
+                                          Data="M6.3,9 L9,11.7 L4,16"/>
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                          StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                          StrokeLineJoin="Round" Fill="Transparent"
+                                          Data="M5.4,3.2 L13.8,11.6"/>
+                                </Canvas>
+                            </Viewbox>
+                        </Button>
+                        <Button Style="{StaticResource ToolbarButton}"
+                                Click="OpenExternalButton_Click" ToolTip="기본 브라우저로 열기">
+                            <Viewbox Width="15" Height="15">
+                                <Canvas Width="18" Height="18">
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                          StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                          StrokeLineJoin="Round" Fill="Transparent"
+                                          Data="M4,7 L4,14 L11,14"/>
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                          StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                          StrokeLineJoin="Round" Fill="Transparent"
+                                          Data="M8,4 L14,4 L14,10"/>
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                          StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                          StrokeLineJoin="Round" Fill="Transparent"
+                                          Data="M14,4 L8,10"/>
+                                </Canvas>
+                            </Viewbox>
+                        </Button>
                         <Button Content="-" Style="{StaticResource ToolbarButton}"
                                 Click="MinimizeButton_Click" ToolTip="숨기기"/>
                         <Button Content="X" Style="{StaticResource ToolbarButton}"
@@ -148,11 +250,22 @@
             </Border>
 
             <!-- WebView2 -->
-            <wv2:WebView2 Grid.Row="1" x:Name="WebView"
-                          DefaultBackgroundColor="Transparent"/>
+            <ContentControl Grid.Row="1" x:Name="WebViewHost"/>
+
+            <!-- Tabs -->
+            <DockPanel Grid.Row="2" Background="#252538" LastChildFill="True" Margin="0">
+                <Button DockPanel.Dock="Right" Content="+" Style="{StaticResource ToolbarButton}"
+                        Click="NewTabButton_Click" ToolTip="새 탭" FontSize="14"
+                        MinWidth="30" Margin="4,3,6,3"/>
+                <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Disabled"
+                              Margin="6,0,0,0">
+                    <StackPanel x:Name="TabsHost" Orientation="Horizontal"/>
+                </ScrollViewer>
+            </DockPanel>
 
             <!-- Status Bar -->
-            <Border Grid.Row="2" Background="#2D2D3F" Padding="8,4" CornerRadius="0,0,12,12">
+            <Border Grid.Row="3" Background="#2D2D3F" Padding="8,4" CornerRadius="0,0,12,12">
                 <Grid>
                     <TextBlock x:Name="StatusText" Text="준비됨" Foreground="#707088"
                                FontSize="11" FontFamily="Segoe UI" VerticalAlignment="Center"

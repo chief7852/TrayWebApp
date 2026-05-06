@@ -26,6 +26,9 @@ public class WebAppItem
     /// <summary>User-Agent override: "desktop", "mobile", or custom string</summary>
     public string UserAgent { get; set; } = "desktop";
 
+    /// <summary>Use a separate WebView2 profile folder for cookies and login state</summary>
+    public bool UseIsolatedSession { get; set; }
+
     /// <summary>Local favicon file path, if one has been cached</summary>
     public string? IconPath { get; set; }
 
@@ -34,6 +37,12 @@ public class WebAppItem
 
     /// <summary>Last URL visited while this app was active</summary>
     public string? LastVisitedUrl { get; set; }
+
+    /// <summary>Last open tabs for this app</summary>
+    public List<WebAppTabState> Tabs { get; set; } = new();
+
+    /// <summary>Last active tab index for this app</summary>
+    public int LastActiveTabIndex { get; set; } = 0;
 
     /// <summary>Last time this app was opened, in UTC</summary>
     public DateTimeOffset? LastUsedAtUtc { get; set; }
@@ -49,4 +58,10 @@ public class WebAppItem
 
     /// <summary>Sort order index</summary>
     public int Order { get; set; } = 0;
+}
+
+public class WebAppTabState
+{
+    public string? Title { get; set; }
+    public string Url { get; set; } = "https://www.google.com";
 }

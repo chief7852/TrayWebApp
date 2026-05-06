@@ -42,6 +42,7 @@ public class HotkeyService : IDisposable
     public const uint VK_7 = 0x37;
     public const uint VK_8 = 0x38;
     public const uint VK_9 = 0x39;
+    public const uint VK_K = 0x4B;
 
     private const int WM_HOTKEY = 0x0312;
 
