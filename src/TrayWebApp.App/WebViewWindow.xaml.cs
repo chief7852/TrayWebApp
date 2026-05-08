@@ -249,8 +249,8 @@ public partial class WebViewWindow : Window
     {
         var menu = new ContextMenu
         {
-            Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(30, 30, 46)),
-            Foreground = System.Windows.Media.Brushes.White
+            Background = ThemeManager.GetBrush("BackgroundBrush"),
+            Foreground = ThemeManager.GetBrush("TextPrimaryBrush")
         };
 
         var duplicate = CreateTabMenuItem("탭 복제", () => DuplicateTab(tab));
@@ -1090,15 +1090,15 @@ public partial class WebViewWindow : Window
         foreach (var tab in _tabs)
         {
             var isActive = tab == _activeTab;
-            tab.HeaderButton.Background = new SolidColorBrush(isActive
-                ? System.Windows.Media.Color.FromRgb(45, 45, 63)
-                : System.Windows.Media.Color.FromRgb(37, 37, 56));
-            tab.HeaderButton.Foreground = new SolidColorBrush(isActive
-                ? Colors.White
-                : System.Windows.Media.Color.FromRgb(200, 200, 216));
-            tab.HeaderButton.BorderBrush = new SolidColorBrush(isActive
-                ? System.Windows.Media.Color.FromRgb(0, 210, 255)
-                : System.Windows.Media.Color.FromRgb(64, 64, 96));
+            tab.HeaderButton.Background = isActive
+                ? ThemeManager.GetBrush("SurfaceBrush")
+                : ThemeManager.GetBrush("SurfaceAltBrush");
+            tab.HeaderButton.Foreground = isActive
+                ? ThemeManager.GetBrush("TextPrimaryBrush")
+                : ThemeManager.GetBrush("TextSecondaryBrush");
+            tab.HeaderButton.BorderBrush = isActive
+                ? ThemeManager.GetBrush("AccentBrush")
+                : ThemeManager.GetBrush("BorderBrush");
         }
 
         if (_activeTab == null)

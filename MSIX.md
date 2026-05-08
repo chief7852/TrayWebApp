@@ -28,8 +28,8 @@ cd C:\test\TrayWebApp
 생성 위치:
 
 ```text
-publish\msix\TrayWebApp_1.0.0.0_x64.msix
-publish\msix\TrayWebApp_1.0.0.0_x64.msixupload
+publish\msix\TrayWebApp_1.0.1.0_x64.msix
+publish\msix\TrayWebApp_1.0.1.0_x64.msixupload
 ```
 
 기본값으로 만든 MSIX는 로컬 검증용입니다. Microsoft Store 제출용으로는 Partner Center의 패키지 ID 값을 넣어 다시 만들어야 합니다.
@@ -42,14 +42,14 @@ Partner Center에서 앱의 패키지/ID 정보에 들어가 다음 값을 확�
 - Publisher
 - Publisher display name
 
-확인한 값을 아래 명령에 넣습니다. 아래 예시의 `...` 부분은 설명이 아니라 실제 Partner Center 값으로 바꿔야 합니다. `<`와 `>` 문자는 넣지 않습니다.
+확인한 값을 아래 명령에 넣습니다. 예시의 값은 실제 Partner Center 값으로 바꿔야 합니다.
 
 ```powershell
 .\build-msix.ps1 `
   -PackageIdentityName "실제 Package Identity Name" `
   -Publisher "CN=실제 Publisher 값" `
   -PublisherDisplayName "실제 게시자 표시 이름" `
-  -Version "1.0.0.0"
+  -Version "1.0.1.0"
 ```
 
 Store에는 기존 EXE URL 대신 생성된 `.msixupload` 파일을 업로드합니다. Partner Center는 `.msix`도 받을 수 있지만, Microsoft 문서에서는 Store 제출용으로 `.msixupload`를 권장합니다.
@@ -71,9 +71,9 @@ Store 밖에서 직접 설치하려면 MSIX는 신뢰된 인증서로 서명되�
 ## 주의할 점
 
 - MSIX는 설치 파일이 `C:\Program Files\WindowsApps` 아래 읽기 전용 영역에 배치됩니다. 앱 설정과 WebView2 데이터는 사용자 AppData에 저장되어야 합니다.
-- 현재 Windows 시작 시 실행 기능은 기존 EXE 배포 기준으로 구현되어 있습니다. MSIX/Store 배포에서 시작 프로그램 토글이 완전히 동일하게 동작하지 않으면, Store용 startup task manifest와 WinRT `StartupTask` 연동을 별도 적용해야 합니다.
+- 현재 Windows 시작 시 실행 기능은 기존 EXE 배포 기준으로 구현되어 있습니다. MSIX/Store 배포에서 시작 프로그램 토글이 완전히 동일하게 동작하지 않으면 Store용 startup task manifest와 WinRT `StartupTask` 연동을 별도 적용해야 합니다.
 - Inno Setup 기반 `TrayWebApp-Setup.exe`는 Store EXE 제출용이 아닙니다. Store 제출에는 MSIX 산출물을 사용하세요.
-- 기존 Partner Center에서 "패키지 URL"을 입력하는 화면에 있다면 Win32 EXE/MSI 제출 흐름입니다. MSIX는 URL을 입력하는 대신 Packages 단계에서 `.msixupload` 또는 `.msix` 파일을 직접 업로드하는 흐름이어야 합니다.
+- 기존 Partner Center에서 "패키지 URL"을 입력하는 화면에 있다면 Win32 EXE/MSI 제출 흐름입니다. MSIX는 URL 대신 Packages 단계에서 `.msixupload` 또는 `.msix` 파일을 직접 업로드하는 흐름이어야 합니다.
 
 ## 참고 문서
 

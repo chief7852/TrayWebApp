@@ -1,8 +1,8 @@
 <Window x:Class="TrayWebApp.App.ManageAppsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="TrayWebApp - 웹앱 관리"
-        Width="520" Height="600"
+        Title="TrayWebApp - 앱 관리"
+        Width="540" Height="620"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None"
         AllowsTransparency="True"
@@ -12,10 +12,9 @@
         Icon="pack://application:,,,/icon.ico">
 
     <Window.Resources>
-        <!-- Rounded Button Style -->
         <Style x:Key="PrimaryButton" TargetType="Button">
-            <Setter Property="Background" Value="#0078D4"/>
-            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="Background" Value="{DynamicResource PrimaryBrush}"/>
+            <Setter Property="Foreground" Value="White"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Padding" Value="16,8"/>
             <Setter Property="FontSize" Value="13"/>
@@ -30,32 +29,10 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#1A8AE6"/>
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource PrimaryHoverBrush}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#005A9E"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
-            <Setter Property="Background" Value="#C42B1C"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" Background="{TemplateBinding Background}"
-                                CornerRadius="6" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#E03E2D"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#A02010"/>
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource PrimaryPressedBrush}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -64,37 +41,24 @@
         </Style>
 
         <Style x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
-            <Setter Property="Background" Value="#3D3D52"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" Background="{TemplateBinding Background}"
-                                CornerRadius="6" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#4D4D66"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#2D2D3F"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
+            <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
         </Style>
 
-        <!-- TextBox Style -->
+        <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+            <Setter Property="Background" Value="{DynamicResource DangerBackgroundBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+        </Style>
+
         <Style x:Key="DarkTextBox" TargetType="TextBox">
-            <Setter Property="Background" Value="#2D2D3F"/>
-            <Setter Property="Foreground" Value="#FFFFFF"/>
-            <Setter Property="BorderBrush" Value="#404060"/>
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="10,8"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="FontFamily" Value="Segoe UI"/>
-            <Setter Property="CaretBrush" Value="#00D2FF"/>
+            <Setter Property="CaretBrush" Value="{DynamicResource AccentBrush}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TextBox">
@@ -106,10 +70,7 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsFocused" Value="True">
-                                <Setter TargetName="border" Property="BorderBrush" Value="#0078D4"/>
-                            </Trigger>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="BorderBrush" Value="#5050A0"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -117,10 +78,9 @@
             </Setter>
         </Style>
 
-        <!-- ListBox Item Style -->
         <Style x:Key="AppListItem" TargetType="ListBoxItem">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
             <Setter Property="Padding" Value="12,10"/>
             <Setter Property="Margin" Value="0,2"/>
             <Setter Property="FontFamily" Value="Segoe UI"/>
@@ -134,10 +94,10 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#3D3D52"/>
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource SurfaceHoverBrush}"/>
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#0078D4"/>
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource PrimaryBrush}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -145,9 +105,8 @@
             </Setter>
         </Style>
 
-        <!-- CheckBox Style -->
         <Style x:Key="DarkCheckBox" TargetType="CheckBox">
-            <Setter Property="Foreground" Value="#A0A0B8"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="FontFamily" Value="Segoe UI"/>
             <Setter Property="Cursor" Value="Hand"/>
@@ -155,10 +114,11 @@
         </Style>
     </Window.Resources>
 
-    <Border CornerRadius="12" Background="#1E1E2E" BorderBrush="#404060" BorderThickness="1"
+    <Border CornerRadius="12" Background="{DynamicResource BackgroundBrush}"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
             ClipToBounds="True">
         <Border.Effect>
-            <DropShadowEffect BlurRadius="20" ShadowDepth="4" Opacity="0.5" Color="Black"/>
+            <DropShadowEffect BlurRadius="20" ShadowDepth="4" Opacity="0.35" Color="Black"/>
         </Border.Effect>
 
         <Grid>
@@ -167,21 +127,19 @@
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <!-- Title Bar -->
-            <Border Grid.Row="0" Background="#2D2D3F" CornerRadius="12,12,0,0"
+            <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}" CornerRadius="12,12,0,0"
                     MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
                 <Grid>
-                    <TextBlock Text="웹앱 관리" Foreground="#00D2FF"
+                    <TextBlock Text="앱 관리" Foreground="{DynamicResource AccentBrush}"
                                FontSize="14" FontFamily="Segoe UI" FontWeight="SemiBold"
                                VerticalAlignment="Center" Margin="16,0,0,0"/>
                     <Button Content="X" HorizontalAlignment="Right" Margin="0,0,8,0"
                             Style="{StaticResource SecondaryButton}"
-                            Foreground="#FF6464" Padding="8,4"
+                            Foreground="{DynamicResource DangerBrush}" Padding="8,4"
                             Click="CloseButton_Click"/>
                 </Grid>
             </Border>
 
-            <!-- Content -->
             <Grid Grid.Row="1" Margin="16">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -191,9 +149,8 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <!-- App List Header -->
                 <Grid Grid.Row="0" Margin="0,0,0,8">
-                    <TextBlock Text="등록된 앱" Foreground="#A0A0B8"
+                    <TextBlock Text="등록된 앱" Foreground="{DynamicResource TextSecondaryBrush}"
                                FontSize="12" FontFamily="Segoe UI" FontWeight="SemiBold"
                                VerticalAlignment="Center"/>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
@@ -213,7 +170,6 @@
                          KeyDown="SearchInput_KeyDown"
                          ToolTip="앱 이름 또는 URL 검색"/>
 
-                <!-- App List -->
                 <ListBox Grid.Row="2" x:Name="AppListBox"
                          Background="Transparent" BorderThickness="0"
                          ItemContainerStyle="{StaticResource AppListItem}"
@@ -228,29 +184,27 @@
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Grid.Column="0">
                                     <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold"
-                                               Foreground="#FFFFFF" FontFamily="Segoe UI"/>
+                                               Foreground="{DynamicResource TextPrimaryBrush}" FontFamily="Segoe UI"/>
                                     <TextBlock Text="{Binding Url}" FontSize="11"
-                                               Foreground="#707088" FontFamily="Segoe UI"
+                                               Foreground="{DynamicResource TextMutedBrush}" FontFamily="Segoe UI"
                                                TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
                                 </StackPanel>
-                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock FontSize="10" Foreground="#505068" VerticalAlignment="Center"
-                                               FontFamily="Segoe UI">
-                                        <TextBlock.Text>
-                                            <MultiBinding StringFormat="{}{0}x{1}">
-                                                <Binding Path="Width"/>
-                                                <Binding Path="Height"/>
-                                            </MultiBinding>
-                                        </TextBlock.Text>
-                                    </TextBlock>
-                                </StackPanel>
+                                <TextBlock Grid.Column="1" FontSize="10"
+                                           Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center"
+                                           FontFamily="Segoe UI">
+                                    <TextBlock.Text>
+                                        <MultiBinding StringFormat="{}{0}x{1}">
+                                            <Binding Path="Width"/>
+                                            <Binding Path="Height"/>
+                                        </MultiBinding>
+                                    </TextBlock.Text>
+                                </TextBlock>
                             </Grid>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
 
-                <!-- Edit Form -->
-                <Border Grid.Row="3" Background="#252538" CornerRadius="10"
+                <Border Grid.Row="3" Background="{DynamicResource SurfaceAltBrush}" CornerRadius="10"
                         Padding="16" Margin="0,8,0,8">
                     <Grid x:Name="EditForm">
                         <Grid.RowDefinitions>
@@ -267,23 +221,20 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
 
-                        <!-- Name -->
                         <TextBlock Grid.Row="0" Grid.Column="0" Text="이름"
-                                   Foreground="#A0A0B8" FontSize="13" FontFamily="Segoe UI"
+                                   Foreground="{DynamicResource TextSecondaryBrush}" FontSize="13" FontFamily="Segoe UI"
                                    VerticalAlignment="Center" Margin="0,0,0,8"/>
                         <TextBox Grid.Row="0" Grid.Column="1" x:Name="NameInput"
                                  Style="{StaticResource DarkTextBox}" Margin="0,0,0,8"/>
 
-                        <!-- URL -->
                         <TextBlock Grid.Row="1" Grid.Column="0" Text="URL"
-                                   Foreground="#A0A0B8" FontSize="13" FontFamily="Segoe UI"
+                                   Foreground="{DynamicResource TextSecondaryBrush}" FontSize="13" FontFamily="Segoe UI"
                                    VerticalAlignment="Center" Margin="0,0,0,8"/>
                         <TextBox Grid.Row="1" Grid.Column="1" x:Name="UrlInput"
                                  Style="{StaticResource DarkTextBox}" Margin="0,0,0,8"/>
 
-                        <!-- Width x Height -->
                         <TextBlock Grid.Row="2" Grid.Column="0" Text="크기"
-                                   Foreground="#A0A0B8" FontSize="13" FontFamily="Segoe UI"
+                                   Foreground="{DynamicResource TextSecondaryBrush}" FontSize="13" FontFamily="Segoe UI"
                                    VerticalAlignment="Center" Margin="0,0,0,8"/>
                         <Grid Grid.Row="2" Grid.Column="1" Margin="0,0,0,8">
                             <Grid.ColumnDefinitions>
@@ -291,15 +242,12 @@
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <TextBox Grid.Column="0" x:Name="WidthInput"
-                                     Style="{StaticResource DarkTextBox}"/>
-                            <TextBlock Grid.Column="1" Text="  x  " Foreground="#505068"
+                            <TextBox Grid.Column="0" x:Name="WidthInput" Style="{StaticResource DarkTextBox}"/>
+                            <TextBlock Grid.Column="1" Text="  x  " Foreground="{DynamicResource TextMutedBrush}"
                                        VerticalAlignment="Center" FontSize="13"/>
-                            <TextBox Grid.Column="2" x:Name="HeightInput"
-                                     Style="{StaticResource DarkTextBox}"/>
+                            <TextBox Grid.Column="2" x:Name="HeightInput" Style="{StaticResource DarkTextBox}"/>
                         </Grid>
 
-                        <!-- Always On Top -->
                         <CheckBox Grid.Row="3" Grid.Column="1" x:Name="AlwaysOnTopCheck"
                                   Content="항상 위" Style="{StaticResource DarkCheckBox}"
                                   Margin="0,0,0,8"/>
@@ -307,20 +255,23 @@
                         <CheckBox Grid.Row="4" Grid.Column="1" x:Name="IsolatedSessionCheck"
                                   Content="독립 세션 사용"
                                   Style="{StaticResource DarkCheckBox}"
-                                  ToolTip="이 앱만 별도 쿠키/로그인 저장소를 사용합니다"
+                                  ToolTip="이 앱만 별도 쿠키와 로그인 저장소를 사용합니다."
                                   Margin="0,0,0,8"/>
 
-                        <!-- User-Agent -->
                         <TextBlock Grid.Row="5" Grid.Column="0" Text="UA"
-                                   Foreground="#A0A0B8" FontSize="13" FontFamily="Segoe UI"
+                                   Foreground="{DynamicResource TextSecondaryBrush}" FontSize="13" FontFamily="Segoe UI"
                                    VerticalAlignment="Center" Margin="0,0,0,8"/>
                         <TextBox Grid.Row="5" Grid.Column="1" x:Name="UserAgentInput"
                                  Style="{StaticResource DarkTextBox}" Margin="0,0,0,8"
-                                  ToolTip="desktop, mobile 또는 사용자 지정 UA 문자열"/>
+                                 ToolTip="desktop, mobile 또는 직접 지정한 User-Agent 문자열"/>
 
-                        <!-- Buttons -->
                         <StackPanel Grid.Row="6" Grid.Column="1" Orientation="Horizontal"
                                     HorizontalAlignment="Right">
+                            <Button x:Name="ClearSessionButton" Content="세션 초기화"
+                                    Style="{StaticResource DangerButton}"
+                                    Padding="12,6" Margin="0,0,8,0"
+                                    Click="ClearSessionButton_Click" Visibility="Collapsed"
+                                    ToolTip="이 앱의 독립 세션 쿠키와 로그인 데이터를 삭제합니다."/>
                             <Button x:Name="DeleteButton" Content="삭제"
                                     Style="{StaticResource DangerButton}"
                                     Padding="12,6" Margin="0,0,8,0"
@@ -336,11 +287,9 @@
                     </Grid>
                 </Border>
 
-                <!-- Bottom info -->
-                <TextBlock Grid.Row="4" Foreground="#505068" FontSize="11" FontFamily="Segoe UI"
-                           HorizontalAlignment="Center" Margin="0,4,0,0">
-                    <Run Text="Tip: Right-click the tray icon to switch between apps"/>
-                </TextBlock>
+                <TextBlock Grid.Row="4" Foreground="{DynamicResource TextMutedBrush}" FontSize="11" FontFamily="Segoe UI"
+                           HorizontalAlignment="Center" Margin="0,4,0,0"
+                           Text="Tip: 트레이 아이콘 우클릭으로 앱을 전환할 수 있습니다."/>
             </Grid>
         </Grid>
     </Border>

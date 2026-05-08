@@ -85,6 +85,12 @@ public class SettingsStore
         {
             settings.DefaultUrl = "https://" + settings.DefaultUrl;
         }
+
+        if (!string.Equals(settings.ThemeMode, "Light", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(settings.ThemeMode, "Dark", StringComparison.OrdinalIgnoreCase))
+        {
+            settings.ThemeMode = "Dark";
+        }
     }
 
     private static void WriteAtomic(string path, string content)

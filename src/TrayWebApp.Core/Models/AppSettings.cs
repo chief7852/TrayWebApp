@@ -49,4 +49,7 @@ public class AppSettings
 
     /// <summary>Show the URL entry field in the floating browser window</summary>
     public bool ShowAddressBar { get; set; } = true;
+
+    /// <summary>Application chrome theme: Dark or Light</summary>
+    public string ThemeMode { get; set; } = "Dark";
 }

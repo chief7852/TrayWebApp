@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Windows;
 using System.Windows.Input;
 using TrayWebApp.Core.Models;
@@ -111,6 +112,7 @@ public partial class ManageAppsWindow : Window
             _editingApp = app;
             _isNewMode = false;
             DeleteButton.Visibility = Visibility.Visible;
+            ClearSessionButton.Visibility = app.UseIsolatedSession ? Visibility.Visible : Visibility.Collapsed;
             SaveButton.Content = "저장";
         }
     }
@@ -142,6 +144,7 @@ public partial class ManageAppsWindow : Window
         _editingApp = null;
         _isNewMode = true;
         DeleteButton.Visibility = Visibility.Collapsed;
+        ClearSessionButton.Visibility = Visibility.Collapsed;
         SaveButton.Content = "추가";
     }
 
@@ -220,6 +223,7 @@ public partial class ManageAppsWindow : Window
                 _apps[index] = _editingApp;
             }
             RefreshVisibleApps(_editingApp);
+            ClearSessionButton.Visibility = _editingApp.UseIsolatedSession ? Visibility.Visible : Visibility.Collapsed;
             await RefreshFaviconAsync(_editingApp);
         }
 
@@ -242,6 +246,44 @@ public partial class ManageAppsWindow : Window
             _apps.Remove(_editingApp);
             AppsChanged?.Invoke();
             RefreshVisibleApps();
+        }
+    }
+
+    private void ClearSessionButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_editingApp == null || !_editingApp.UseIsolatedSession)
+        {
+            return;
+        }
+
+        var result = MessageBox.Show(
+            $"\"{_editingApp.Name}\" 앱의 독립 세션 데이터를 삭제할까요?\n\n열려 있는 해당 앱 창을 먼저 닫아야 완전히 삭제됩니다.",
+            "세션 초기화",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+
+        if (result != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        var profilePath = GetIsolatedSessionPath(_editingApp);
+        try
+        {
+            if (Directory.Exists(profilePath))
+            {
+                Directory.Delete(profilePath, recursive: true);
+            }
+
+            MessageBox.Show("독립 세션 데이터를 삭제했습니다.", "세션 초기화", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"세션 데이터를 삭제하지 못했습니다.\n\n앱 창이 열려 있다면 닫은 뒤 다시 시도하세요.\n\n{ex.Message}",
+                "세션 초기화 실패",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
         }
     }
 
@@ -291,6 +333,20 @@ public partial class ManageAppsWindow : Window
             app.IconPath = iconPath;
             _webAppStore.SetIconPath(app.Id, iconPath);
         }
+    }
+
+    private static string GetIsolatedSessionPath(WebAppItem app)
+    {
+        var safeId = new string(app.Id
+            .Where(ch => char.IsLetterOrDigit(ch) || ch is '-' or '_')
+            .ToArray());
+
+        if (string.IsNullOrWhiteSpace(safeId))
+        {
+            safeId = app.Id;
+        }
+
+        return Path.Combine(AppPaths.DataDirectory, "WebView2Profiles", safeId);
     }
 
     #endregion

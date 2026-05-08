@@ -1,4 +1,4 @@
-using System.Drawing;
+﻿using System.Drawing;
 using System.IO;
 using System.Reflection;
 using System.Windows;
@@ -74,7 +74,7 @@ public class TrayService : IDisposable
         _notifyIcon = new NotifyIcon
         {
             Icon = LoadAppIcon(),
-            Text = "TrayWebApp - 클릭해서 열기",
+            Text = "TrayWebApp - ?대┃?댁꽌 ?닿린",
             Visible = true,
             ContextMenuStrip = BuildContextMenu()
         };
@@ -213,15 +213,15 @@ public class TrayService : IDisposable
     private ContextMenuStrip BuildContextMenu()
     {
         var menu = new ContextMenuStrip();
-        menu.BackColor = Color.FromArgb(30, 30, 46);
-        menu.ForeColor = Color.White;
+        menu.BackColor = ThemeManager.ToDrawingColor("BackgroundBrush");
+        menu.ForeColor = ThemeManager.ToDrawingColor("TextPrimaryBrush");
         menu.Renderer = new DarkMenuRenderer();
         menu.ShowImageMargin = true;
 
         // Header
         var header = new ToolStripLabel("TrayWebApp")
         {
-            ForeColor = Color.FromArgb(0, 210, 255),
+            ForeColor = ThemeManager.ToDrawingColor("AccentBrush"),
             Font = new Font("Segoe UI", 10, System.Drawing.FontStyle.Bold),
             Padding = new Padding(4, 6, 4, 4)
         };
@@ -231,25 +231,25 @@ public class TrayService : IDisposable
         var activeWindow = GetActiveWindow();
         var openToggle = new ToolStripMenuItem(activeWindow?.IsVisible == true ? "활성 창 숨기기" : "활성 창 열기")
         {
-            ForeColor = Color.White,
+            ForeColor = ThemeManager.ToDrawingColor("TextPrimaryBrush"),
             Font = new Font("Segoe UI", 9.5f)
         };
         openToggle.Click += (s, e) => ToggleWindow();
         menu.Items.Add(openToggle);
 
-        var reloadCurrent = new ToolStripMenuItem("활성 페이지 새로고침")
+        var reloadCurrent = new ToolStripMenuItem("?쒖꽦 ?섏씠吏 ?덈줈怨좎묠")
         {
             Enabled = activeWindow?.IsLoaded == true,
-            ForeColor = Color.White,
+            ForeColor = ThemeManager.ToDrawingColor("TextPrimaryBrush"),
             Font = new Font("Segoe UI", 9.5f)
         };
         reloadCurrent.Click += (s, e) => GetActiveWindow()?.WebView.CoreWebView2?.Reload();
         menu.Items.Add(reloadCurrent);
 
-        var openExternal = new ToolStripMenuItem("활성 페이지를 기본 브라우저로 열기")
+        var openExternal = new ToolStripMenuItem("?쒖꽦 ?섏씠吏瑜?湲곕낯 釉뚮씪?곗?濡??닿린")
         {
             Enabled = activeWindow?.IsLoaded == true,
-            ForeColor = Color.White,
+            ForeColor = ThemeManager.ToDrawingColor("TextPrimaryBrush"),
             Font = new Font("Segoe UI", 9.5f)
         };
         openExternal.Click += (s, e) => GetActiveWindow()?.OpenCurrentInExternalBrowser();
@@ -269,7 +269,7 @@ public class TrayService : IDisposable
             {
                 Tag = app,
                 Image = LoadMenuImage(app.IconPath),
-                ForeColor = isActive ? Color.FromArgb(0, 210, 255) : Color.White,
+                ForeColor = isActive ? ThemeManager.ToDrawingColor("AccentBrush") : ThemeManager.ToDrawingColor("TextPrimaryBrush"),
                 Font = new Font("Segoe UI", 9.5f, isActive ? System.Drawing.FontStyle.Bold : System.Drawing.FontStyle.Regular)
             };
             item.Click += OnWebAppSelected;
@@ -278,9 +278,9 @@ public class TrayService : IDisposable
 
         if (_webAppStore.Apps.Count == 0)
         {
-            var empty = new ToolStripLabel("   등록된 앱 없음")
+            var empty = new ToolStripLabel("   ?깅줉?????놁쓬")
             {
-                ForeColor = Color.FromArgb(112, 112, 136),
+                ForeColor = ThemeManager.ToDrawingColor("TextMutedBrush"),
                 Font = new Font("Segoe UI", 9f, System.Drawing.FontStyle.Italic)
             };
             menu.Items.Add(empty);
@@ -291,12 +291,12 @@ public class TrayService : IDisposable
         var openWindows = GetOpenWindowApps().ToList();
         if (openWindows.Count > 0)
         {
-            var openWindowsMenu = new ToolStripMenuItem($"열린 창 ({openWindows.Count})")
+            var openWindowsMenu = new ToolStripMenuItem($"?대┛ 李?({openWindows.Count})")
             {
-                ForeColor = Color.White,
+                ForeColor = ThemeManager.ToDrawingColor("TextPrimaryBrush"),
                 Font = new Font("Segoe UI", 9.5f)
             };
-            openWindowsMenu.DropDown.BackColor = Color.FromArgb(30, 30, 46);
+            openWindowsMenu.DropDown.BackColor = ThemeManager.ToDrawingColor("BackgroundBrush");
             openWindowsMenu.DropDown.Renderer = new DarkMenuRenderer();
 
             foreach (var app in openWindows)
@@ -305,7 +305,7 @@ public class TrayService : IDisposable
                 {
                     Tag = app,
                     Image = LoadMenuImage(app.IconPath),
-                    ForeColor = app.Id == _activeAppId ? Color.FromArgb(0, 210, 255) : Color.White,
+                    ForeColor = app.Id == _activeAppId ? ThemeManager.ToDrawingColor("AccentBrush") : ThemeManager.ToDrawingColor("TextPrimaryBrush"),
                     Font = new Font("Segoe UI", 9.5f, app.Id == _activeAppId ? System.Drawing.FontStyle.Bold : System.Drawing.FontStyle.Regular)
                 };
                 item.Click += (s, e) => FocusOpenApp(app);
@@ -324,12 +324,12 @@ public class TrayService : IDisposable
 
         if (recentApps.Count > 0)
         {
-            var recentMenu = new ToolStripMenuItem("최근 사용")
+            var recentMenu = new ToolStripMenuItem("理쒓렐 ?ъ슜")
             {
-                ForeColor = Color.White,
+                ForeColor = ThemeManager.ToDrawingColor("TextPrimaryBrush"),
                 Font = new Font("Segoe UI", 9.5f)
             };
-            recentMenu.DropDown.BackColor = Color.FromArgb(30, 30, 46);
+            recentMenu.DropDown.BackColor = ThemeManager.ToDrawingColor("BackgroundBrush");
             recentMenu.DropDown.Renderer = new DarkMenuRenderer();
 
             foreach (var app in recentApps)
@@ -338,7 +338,7 @@ public class TrayService : IDisposable
                 {
                     Tag = app,
                     Image = LoadMenuImage(app.IconPath),
-                    ForeColor = Color.White,
+                    ForeColor = ThemeManager.ToDrawingColor("TextPrimaryBrush"),
                     Font = new Font("Segoe UI", 9.5f)
                 };
                 item.Click += OnWebAppSelected;
@@ -350,12 +350,12 @@ public class TrayService : IDisposable
         }
 
         // Window Size Presets
-        var presetsMenu = new ToolStripMenuItem("창 크기")
+        var presetsMenu = new ToolStripMenuItem("李??ш린")
         {
-            ForeColor = Color.White,
+            ForeColor = ThemeManager.ToDrawingColor("TextPrimaryBrush"),
             Font = new Font("Segoe UI", 9.5f)
         };
-        presetsMenu.DropDown.BackColor = Color.FromArgb(30, 30, 46);
+        presetsMenu.DropDown.BackColor = ThemeManager.ToDrawingColor("BackgroundBrush");
         presetsMenu.DropDown.Renderer = new DarkMenuRenderer();
 
         foreach (var preset in WindowPreset.Defaults)
@@ -363,7 +363,7 @@ public class TrayService : IDisposable
             var pItem = new ToolStripMenuItem(preset.ToString())
             {
                 Tag = preset,
-                ForeColor = Color.White,
+                ForeColor = ThemeManager.ToDrawingColor("TextPrimaryBrush"),
                 Font = new Font("Segoe UI", 9.5f)
             };
             pItem.Click += OnPresetSelected;
@@ -371,12 +371,12 @@ public class TrayService : IDisposable
         }
         menu.Items.Add(presetsMenu);
 
-        var snapMenu = new ToolStripMenuItem("창 배치")
+        var snapMenu = new ToolStripMenuItem("李?諛곗튂")
         {
-            ForeColor = Color.White,
+            ForeColor = ThemeManager.ToDrawingColor("TextPrimaryBrush"),
             Font = new Font("Segoe UI", 9.5f)
         };
-        snapMenu.DropDown.BackColor = Color.FromArgb(30, 30, 46);
+        snapMenu.DropDown.BackColor = ThemeManager.ToDrawingColor("BackgroundBrush");
         snapMenu.DropDown.Renderer = new DarkMenuRenderer();
 
         foreach (var preset in SnapPresets)
@@ -384,7 +384,7 @@ public class TrayService : IDisposable
             var item = new ToolStripMenuItem(preset.Name)
             {
                 Tag = preset,
-                ForeColor = Color.White,
+                ForeColor = ThemeManager.ToDrawingColor("TextPrimaryBrush"),
                 Font = new Font("Segoe UI", 9.5f)
             };
             item.Click += OnSnapPresetSelected;
@@ -394,10 +394,10 @@ public class TrayService : IDisposable
 
         var opacityMenu = new ToolStripMenuItem("투명도")
         {
-            ForeColor = Color.White,
+            ForeColor = ThemeManager.ToDrawingColor("TextPrimaryBrush"),
             Font = new Font("Segoe UI", 9.5f)
         };
-        opacityMenu.DropDown.BackColor = Color.FromArgb(30, 30, 46);
+        opacityMenu.DropDown.BackColor = ThemeManager.ToDrawingColor("BackgroundBrush");
         opacityMenu.DropDown.Renderer = new DarkMenuRenderer();
 
         foreach (var option in new[] { 1.0, 0.85, 0.7, 0.55, 0.4, 0.3 })
@@ -407,7 +407,7 @@ public class TrayService : IDisposable
             {
                 Checked = Math.Abs(_settingsStore.Settings.WindowOpacity - option) < 0.01,
                 Tag = option,
-                ForeColor = Color.White,
+                ForeColor = ThemeManager.ToDrawingColor("TextPrimaryBrush"),
                 Font = new Font("Segoe UI", 9.5f)
             };
             item.Click += OnOpacitySelected;
@@ -415,9 +415,31 @@ public class TrayService : IDisposable
         }
         menu.Items.Add(opacityMenu);
 
-        var privacyMode = new ToolStripMenuItem("프라이버시 모드")
+        var themeMenu = new ToolStripMenuItem("테마")
         {
-            ForeColor = Color.White,
+            ForeColor = ThemeManager.ToDrawingColor("TextPrimaryBrush"),
+            Font = new Font("Segoe UI", 9.5f)
+        };
+        themeMenu.DropDown.BackColor = ThemeManager.ToDrawingColor("BackgroundBrush");
+        themeMenu.DropDown.Renderer = new DarkMenuRenderer();
+
+        foreach (var option in new[] { ("다크 모드", "Dark"), ("라이트 모드", "Light") })
+        {
+            var item = new ToolStripMenuItem(option.Item1)
+            {
+                Checked = string.Equals(_settingsStore.Settings.ThemeMode, option.Item2, StringComparison.OrdinalIgnoreCase),
+                Tag = option.Item2,
+                ForeColor = ThemeManager.ToDrawingColor("TextPrimaryBrush"),
+                Font = new Font("Segoe UI", 9.5f)
+            };
+            item.Click += OnThemeSelected;
+            themeMenu.DropDownItems.Add(item);
+        }
+        menu.Items.Add(themeMenu);
+
+        var privacyMode = new ToolStripMenuItem("?꾨씪?대쾭??紐⑤뱶")
+        {
+            ForeColor = ThemeManager.ToDrawingColor("TextPrimaryBrush"),
             Font = new Font("Segoe UI", 9.5f)
         };
         privacyMode.Click += (s, e) =>
@@ -444,7 +466,7 @@ public class TrayService : IDisposable
         var alwaysOnTop = new ToolStripMenuItem("항상 위")
         {
             Checked = _settingsStore.Settings.AlwaysOnTop,
-            ForeColor = Color.White,
+            ForeColor = ThemeManager.ToDrawingColor("TextPrimaryBrush"),
             Font = new Font("Segoe UI", 9.5f)
         };
         alwaysOnTop.Click += (s, e) =>
@@ -459,10 +481,10 @@ public class TrayService : IDisposable
         menu.Items.Add(alwaysOnTop);
 
         // Hide on Deactivate
-        var hideOnBlur = new ToolStripMenuItem("바깥 클릭 시 숨김")
+        var hideOnBlur = new ToolStripMenuItem("諛붽묑 ?대┃ ???④?")
         {
             Checked = _settingsStore.Settings.HideOnDeactivate,
-            ForeColor = Color.White,
+            ForeColor = ThemeManager.ToDrawingColor("TextPrimaryBrush"),
             Font = new Font("Segoe UI", 9.5f)
         };
         hideOnBlur.Click += (s, e) =>
@@ -475,28 +497,28 @@ public class TrayService : IDisposable
         menu.Items.Add(new ToolStripSeparator());
 
         // Manage Apps
-        var manage = new ToolStripMenuItem("앱 관리...")
+        var manage = new ToolStripMenuItem("??愿由?..")
         {
-            ForeColor = Color.White,
+            ForeColor = ThemeManager.ToDrawingColor("TextPrimaryBrush"),
             Font = new Font("Segoe UI", 9.5f)
         };
         manage.Click += OnManageAppsClick;
         menu.Items.Add(manage);
 
         // Settings
-        var settings = new ToolStripMenuItem("설정...")
+        var settings = new ToolStripMenuItem("?ㅼ젙...")
         {
-            ForeColor = Color.White,
+            ForeColor = ThemeManager.ToDrawingColor("TextPrimaryBrush"),
             Font = new Font("Segoe UI", 9.5f)
         };
         settings.Click += OnSettingsClick;
         menu.Items.Add(settings);
 
         // Run at Startup
-        var startup = new ToolStripMenuItem("Windows 시작 시 실행")
+        var startup = new ToolStripMenuItem("Windows ?쒖옉 ???ㅽ뻾")
         {
             Checked = StartupService.IsRegistered(),
-            ForeColor = Color.White,
+            ForeColor = ThemeManager.ToDrawingColor("TextPrimaryBrush"),
             Font = new Font("Segoe UI", 9.5f)
         };
         startup.Click += (s, e) =>
@@ -510,9 +532,9 @@ public class TrayService : IDisposable
         menu.Items.Add(new ToolStripSeparator());
 
         // Exit
-        var exit = new ToolStripMenuItem("종료")
+        var exit = new ToolStripMenuItem("醫낅즺")
         {
-            ForeColor = Color.FromArgb(255, 100, 100),
+            ForeColor = ThemeManager.ToDrawingColor("DangerBrush"),
             Font = new Font("Segoe UI", 9.5f)
         };
         exit.Click += (s, e) =>
@@ -586,6 +608,19 @@ public class TrayService : IDisposable
             window.SetVisualOpacity(opacity);
         }
 
+        RebuildMenu();
+    }
+
+    private void OnThemeSelected(object? sender, EventArgs e)
+    {
+        if (sender is not ToolStripMenuItem menuItem)
+        {
+            return;
+        }
+
+        var themeMode = ThemeManager.NormalizeThemeMode(menuItem.Tag?.ToString());
+        _settingsStore.Update(s => s.ThemeMode = themeMode);
+        ThemeManager.Apply(themeMode);
         RebuildMenu();
     }
 
@@ -1234,7 +1269,7 @@ internal class DarkMenuRenderer : ToolStripProfessionalRenderer
     {
         if (e.Item.Selected)
         {
-            using var brush = new SolidBrush(Color.FromArgb(60, 60, 80));
+            using var brush = new SolidBrush(ThemeManager.ToDrawingColor("SurfaceHoverBrush"));
             e.Graphics.FillRectangle(brush, e.Item.ContentRectangle);
         }
         else
@@ -1246,20 +1281,20 @@ internal class DarkMenuRenderer : ToolStripProfessionalRenderer
     protected override void OnRenderSeparator(ToolStripSeparatorRenderEventArgs e)
     {
         var bounds = e.Item.ContentRectangle;
-        using var pen = new Pen(Color.FromArgb(64, 64, 96));
+        using var pen = new Pen(ThemeManager.ToDrawingColor("BorderBrush"));
         var y = bounds.Top + bounds.Height / 2;
         e.Graphics.DrawLine(pen, bounds.Left + 8, y, bounds.Right - 8, y);
     }
 
     protected override void OnRenderToolStripBackground(ToolStripRenderEventArgs e)
     {
-        using var brush = new SolidBrush(Color.FromArgb(30, 30, 46));
+        using var brush = new SolidBrush(ThemeManager.ToDrawingColor("BackgroundBrush"));
         e.Graphics.FillRectangle(brush, e.AffectedBounds);
     }
 
     protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs e)
     {
-        using var pen = new Pen(Color.FromArgb(64, 64, 96));
+        using var pen = new Pen(ThemeManager.ToDrawingColor("BorderBrush"));
         var rect = new Rectangle(0, 0, e.AffectedBounds.Width - 1, e.AffectedBounds.Height - 1);
         e.Graphics.DrawRectangle(pen, rect);
     }
@@ -1267,19 +1302,20 @@ internal class DarkMenuRenderer : ToolStripProfessionalRenderer
 
 internal class DarkColorTable : ProfessionalColorTable
 {
-    public override Color MenuBorder => Color.FromArgb(64, 64, 96);
-    public override Color MenuItemBorder => Color.FromArgb(64, 64, 96);
-    public override Color MenuItemSelected => Color.FromArgb(60, 60, 80);
-    public override Color MenuStripGradientBegin => Color.FromArgb(30, 30, 46);
-    public override Color MenuStripGradientEnd => Color.FromArgb(30, 30, 46);
-    public override Color MenuItemSelectedGradientBegin => Color.FromArgb(50, 50, 70);
-    public override Color MenuItemSelectedGradientEnd => Color.FromArgb(60, 60, 80);
-    public override Color MenuItemPressedGradientBegin => Color.FromArgb(40, 40, 60);
-    public override Color MenuItemPressedGradientEnd => Color.FromArgb(50, 50, 70);
-    public override Color ImageMarginGradientBegin => Color.FromArgb(30, 30, 46);
-    public override Color ImageMarginGradientMiddle => Color.FromArgb(30, 30, 46);
-    public override Color ImageMarginGradientEnd => Color.FromArgb(30, 30, 46);
-    public override Color SeparatorDark => Color.FromArgb(64, 64, 96);
-    public override Color SeparatorLight => Color.FromArgb(30, 30, 46);
-    public override Color ToolStripDropDownBackground => Color.FromArgb(30, 30, 46);
+    public override Color MenuBorder => ThemeManager.ToDrawingColor("BorderBrush");
+    public override Color MenuItemBorder => ThemeManager.ToDrawingColor("BorderBrush");
+    public override Color MenuItemSelected => ThemeManager.ToDrawingColor("SurfaceHoverBrush");
+    public override Color MenuStripGradientBegin => ThemeManager.ToDrawingColor("BackgroundBrush");
+    public override Color MenuStripGradientEnd => ThemeManager.ToDrawingColor("BackgroundBrush");
+    public override Color MenuItemSelectedGradientBegin => ThemeManager.ToDrawingColor("SurfaceAltBrush");
+    public override Color MenuItemSelectedGradientEnd => ThemeManager.ToDrawingColor("SurfaceHoverBrush");
+    public override Color MenuItemPressedGradientBegin => ThemeManager.ToDrawingColor("SurfaceBrush");
+    public override Color MenuItemPressedGradientEnd => ThemeManager.ToDrawingColor("SurfaceAltBrush");
+    public override Color ImageMarginGradientBegin => ThemeManager.ToDrawingColor("BackgroundBrush");
+    public override Color ImageMarginGradientMiddle => ThemeManager.ToDrawingColor("BackgroundBrush");
+    public override Color ImageMarginGradientEnd => ThemeManager.ToDrawingColor("BackgroundBrush");
+    public override Color SeparatorDark => ThemeManager.ToDrawingColor("BorderBrush");
+    public override Color SeparatorLight => ThemeManager.ToDrawingColor("BackgroundBrush");
+    public override Color ToolStripDropDownBackground => ThemeManager.ToDrawingColor("BackgroundBrush");
 }
+

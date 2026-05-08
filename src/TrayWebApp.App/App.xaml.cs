@@ -41,6 +41,7 @@ public partial class App : Application
         _webAppStore = new WebAppStore();
         SettingsStore = _settingsStore;
         WebAppStore = _webAppStore;
+        ThemeManager.Apply(_settingsStore.Settings.ThemeMode);
 
         // Initialize tray service
         _trayService = new TrayService(_settingsStore, _webAppStore);
