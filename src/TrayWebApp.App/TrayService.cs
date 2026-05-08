@@ -74,7 +74,7 @@ public class TrayService : IDisposable
         _notifyIcon = new NotifyIcon
         {
             Icon = LoadAppIcon(),
-            Text = "TrayWebApp - ?대┃?댁꽌 ?닿린",
+            Text = "TrayWebApp - 클릭해서 열기",
             Visible = true,
             ContextMenuStrip = BuildContextMenu()
         };
@@ -237,7 +237,7 @@ public class TrayService : IDisposable
         openToggle.Click += (s, e) => ToggleWindow();
         menu.Items.Add(openToggle);
 
-        var reloadCurrent = new ToolStripMenuItem("?쒖꽦 ?섏씠吏 ?덈줈怨좎묠")
+        var reloadCurrent = new ToolStripMenuItem("활성 페이지 새로고침")
         {
             Enabled = activeWindow?.IsLoaded == true,
             ForeColor = ThemeManager.ToDrawingColor("TextPrimaryBrush"),
@@ -246,7 +246,7 @@ public class TrayService : IDisposable
         reloadCurrent.Click += (s, e) => GetActiveWindow()?.WebView.CoreWebView2?.Reload();
         menu.Items.Add(reloadCurrent);
 
-        var openExternal = new ToolStripMenuItem("?쒖꽦 ?섏씠吏瑜?湲곕낯 釉뚮씪?곗?濡??닿린")
+        var openExternal = new ToolStripMenuItem("활성 페이지를 기본 브라우저로 열기")
         {
             Enabled = activeWindow?.IsLoaded == true,
             ForeColor = ThemeManager.ToDrawingColor("TextPrimaryBrush"),
@@ -278,7 +278,7 @@ public class TrayService : IDisposable
 
         if (_webAppStore.Apps.Count == 0)
         {
-            var empty = new ToolStripLabel("   ?깅줉?????놁쓬")
+            var empty = new ToolStripLabel("   등록된 앱 없음")
             {
                 ForeColor = ThemeManager.ToDrawingColor("TextMutedBrush"),
                 Font = new Font("Segoe UI", 9f, System.Drawing.FontStyle.Italic)
@@ -291,7 +291,7 @@ public class TrayService : IDisposable
         var openWindows = GetOpenWindowApps().ToList();
         if (openWindows.Count > 0)
         {
-            var openWindowsMenu = new ToolStripMenuItem($"?대┛ 李?({openWindows.Count})")
+            var openWindowsMenu = new ToolStripMenuItem($"열린 창 ({openWindows.Count})")
             {
                 ForeColor = ThemeManager.ToDrawingColor("TextPrimaryBrush"),
                 Font = new Font("Segoe UI", 9.5f)
@@ -324,7 +324,7 @@ public class TrayService : IDisposable
 
         if (recentApps.Count > 0)
         {
-            var recentMenu = new ToolStripMenuItem("理쒓렐 ?ъ슜")
+            var recentMenu = new ToolStripMenuItem("최근 사용")
             {
                 ForeColor = ThemeManager.ToDrawingColor("TextPrimaryBrush"),
                 Font = new Font("Segoe UI", 9.5f)
@@ -350,7 +350,7 @@ public class TrayService : IDisposable
         }
 
         // Window Size Presets
-        var presetsMenu = new ToolStripMenuItem("李??ш린")
+        var presetsMenu = new ToolStripMenuItem("창 크기")
         {
             ForeColor = ThemeManager.ToDrawingColor("TextPrimaryBrush"),
             Font = new Font("Segoe UI", 9.5f)
@@ -371,7 +371,7 @@ public class TrayService : IDisposable
         }
         menu.Items.Add(presetsMenu);
 
-        var snapMenu = new ToolStripMenuItem("李?諛곗튂")
+        var snapMenu = new ToolStripMenuItem("창 배치")
         {
             ForeColor = ThemeManager.ToDrawingColor("TextPrimaryBrush"),
             Font = new Font("Segoe UI", 9.5f)
@@ -437,7 +437,7 @@ public class TrayService : IDisposable
         }
         menu.Items.Add(themeMenu);
 
-        var privacyMode = new ToolStripMenuItem("?꾨씪?대쾭??紐⑤뱶")
+        var privacyMode = new ToolStripMenuItem("프라이버시 모드")
         {
             ForeColor = ThemeManager.ToDrawingColor("TextPrimaryBrush"),
             Font = new Font("Segoe UI", 9.5f)
@@ -481,7 +481,7 @@ public class TrayService : IDisposable
         menu.Items.Add(alwaysOnTop);
 
         // Hide on Deactivate
-        var hideOnBlur = new ToolStripMenuItem("諛붽묑 ?대┃ ???④?")
+        var hideOnBlur = new ToolStripMenuItem("바깥 클릭 시 숨기기")
         {
             Checked = _settingsStore.Settings.HideOnDeactivate,
             ForeColor = ThemeManager.ToDrawingColor("TextPrimaryBrush"),
@@ -497,7 +497,7 @@ public class TrayService : IDisposable
         menu.Items.Add(new ToolStripSeparator());
 
         // Manage Apps
-        var manage = new ToolStripMenuItem("??愿由?..")
+        var manage = new ToolStripMenuItem("앱 관리...")
         {
             ForeColor = ThemeManager.ToDrawingColor("TextPrimaryBrush"),
             Font = new Font("Segoe UI", 9.5f)
@@ -506,7 +506,7 @@ public class TrayService : IDisposable
         menu.Items.Add(manage);
 
         // Settings
-        var settings = new ToolStripMenuItem("?ㅼ젙...")
+        var settings = new ToolStripMenuItem("설정...")
         {
             ForeColor = ThemeManager.ToDrawingColor("TextPrimaryBrush"),
             Font = new Font("Segoe UI", 9.5f)
@@ -515,7 +515,7 @@ public class TrayService : IDisposable
         menu.Items.Add(settings);
 
         // Run at Startup
-        var startup = new ToolStripMenuItem("Windows ?쒖옉 ???ㅽ뻾")
+        var startup = new ToolStripMenuItem("Windows 시작 시 실행")
         {
             Checked = StartupService.IsRegistered(),
             ForeColor = ThemeManager.ToDrawingColor("TextPrimaryBrush"),
@@ -532,7 +532,7 @@ public class TrayService : IDisposable
         menu.Items.Add(new ToolStripSeparator());
 
         // Exit
-        var exit = new ToolStripMenuItem("醫낅즺")
+        var exit = new ToolStripMenuItem("종료")
         {
             ForeColor = ThemeManager.ToDrawingColor("DangerBrush"),
             Font = new Font("Segoe UI", 9.5f)

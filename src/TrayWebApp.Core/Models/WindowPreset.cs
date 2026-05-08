@@ -10,14 +10,14 @@ public class WindowPreset
     public int Width { get; set; }
     public int Height { get; set; }
 
-    /// <summary>Built-in presets matching common device sizes</summary>
-    public static readonly WindowPreset[] Defaults = new[]
+    /// <summary>Built-in presets matching common device sizes.</summary>
+    public static readonly WindowPreset[] Defaults =
     {
-        new WindowPreset { Name = "모바일", Width = 390, Height = 844 },
-        new WindowPreset { Name = "컴팩트", Width = 430, Height = 720 },
-        new WindowPreset { Name = "태블릿", Width = 768, Height = 1024 },
-        new WindowPreset { Name = "와이드", Width = 1024, Height = 768 },
-        new WindowPreset { Name = "데스크톱", Width = 1280, Height = 800 },
+        new() { Name = "모바일", Width = 390, Height = 844 },
+        new() { Name = "컴팩트", Width = 430, Height = 720 },
+        new() { Name = "태블릿", Width = 768, Height = 1024 },
+        new() { Name = "와이드", Width = 1024, Height = 768 },
+        new() { Name = "데스크톱", Width = 1280, Height = 800 },
     };
 
     public override string ToString() => $"{Name} ({Width}x{Height})";
