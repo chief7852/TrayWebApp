@@ -5,6 +5,7 @@ using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Interop;
 using System.Windows.Media;
 using Microsoft.Web.WebView2.Core;
@@ -915,6 +916,11 @@ public partial class WebViewWindow : Window
             return;
         }
 
+        if (IsFromSliderThumb(e.OriginalSource as DependencyObject))
+        {
+            return;
+        }
+
         var clickX = e.GetPosition(slider).X;
         var ratio = slider.ActualWidth <= 0 ? 0 : Math.Clamp(clickX / slider.ActualWidth, 0, 1);
         var value = slider.Minimum + ((slider.Maximum - slider.Minimum) * ratio);
@@ -930,6 +936,21 @@ public partial class WebViewWindow : Window
 
         slider.Focus();
         e.Handled = true;
+    }
+
+    private static bool IsFromSliderThumb(DependencyObject? source)
+    {
+        while (source != null)
+        {
+            if (source is Thumb)
+            {
+                return true;
+            }
+
+            source = VisualTreeHelper.GetParent(source);
+        }
+
+        return false;
     }
 
     private void PinButton_Click(object sender, RoutedEventArgs e)
