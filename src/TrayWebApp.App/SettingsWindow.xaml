@@ -251,7 +251,7 @@
 
                     <TextBlock Text="정보" Style="{StaticResource SectionHeader}"/>
                     <TextBlock Foreground="{DynamicResource TextMutedBrush}" FontSize="12" FontFamily="Segoe UI">
-                        <Run Text="TrayWebApp v1.0.1" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                        <Run Text="TrayWebApp v1.0.2" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}"/>
                         <LineBreak/>
                         <Run Text="A tray-based mini browser for Windows"/>
                         <LineBreak/>

@@ -255,6 +255,16 @@ public class TrayService : IDisposable
         openExternal.Click += (s, e) => GetActiveWindow()?.OpenCurrentInExternalBrowser();
         menu.Items.Add(openExternal);
 
+        var mobileView = new ToolStripMenuItem("모바일 보기")
+        {
+            Enabled = activeWindow?.IsLoaded == true,
+            Checked = activeWindow?.IsMobileView == true,
+            ForeColor = ThemeManager.ToDrawingColor("TextPrimaryBrush"),
+            Font = new Font("Segoe UI", 9.5f)
+        };
+        mobileView.Click += OnMobileViewSelected;
+        menu.Items.Add(mobileView);
+
         menu.Items.Add(new ToolStripSeparator());
 
         // Web App entries
@@ -621,6 +631,18 @@ public class TrayService : IDisposable
         var themeMode = ThemeManager.NormalizeThemeMode(menuItem.Tag?.ToString());
         _settingsStore.Update(s => s.ThemeMode = themeMode);
         ThemeManager.Apply(themeMode);
+        RebuildMenu();
+    }
+
+    private void OnMobileViewSelected(object? sender, EventArgs e)
+    {
+        var window = GetActiveWindow();
+        if (window == null)
+        {
+            return;
+        }
+
+        window.SetMobileView(!window.IsMobileView);
         RebuildMenu();
     }
 

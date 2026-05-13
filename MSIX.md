@@ -28,8 +28,8 @@ cd C:\test\TrayWebApp
 생성 위치:
 
 ```text
-publish\msix\TrayWebApp_1.0.1.0_x64.msix
-publish\msix\TrayWebApp_1.0.1.0_x64.msixupload
+publish\msix\TrayWebApp_1.0.2.0_x64.msix
+publish\msix\TrayWebApp_1.0.2.0_x64.msixupload
 ```
 
 기본값으로 만든 MSIX는 로컬 검증용입니다. Microsoft Store 제출용으로는 Partner Center의 패키지 ID 값을 넣어 다시 만들어야 합니다.
@@ -49,7 +49,7 @@ Partner Center에서 앱의 패키지/ID 정보에 들어가 다음 값을 확�
   -PackageIdentityName "실제 Package Identity Name" `
   -Publisher "CN=실제 Publisher 값" `
   -PublisherDisplayName "실제 게시자 표시 이름" `
-  -Version "1.0.1.0"
+  -Version "1.0.2.0"
 ```
 
 Store에는 기존 EXE URL 대신 생성된 `.msixupload` 파일을 업로드합니다. Partner Center는 `.msix`도 받을 수 있지만, Microsoft 문서에서는 Store 제출용으로 `.msixupload`를 권장합니다.

@@ -69,10 +69,14 @@ public partial class WebViewWindow : Window
     private string? _pendingUserAgent;
     private double? _pendingZoomFactor;
     private string _homeUrl = "https://www.google.com";
+    private string? _baseUserAgent;
     private double _zoomFactor = 1.0;
     private double _visualOpacity = 1.0;
     private bool _suppressOpacitySliderEvent;
     private bool _isAlwaysOnTop;
+    private bool _isMobileView;
+    private double? _desktopWidthBeforeMobile;
+    private double? _desktopHeightBeforeMobile;
 
     private static readonly IntPtr HwndTopMost = new(-1);
     private static readonly IntPtr HwndNoTopMost = new(-2);
@@ -90,6 +94,9 @@ public partial class WebViewWindow : Window
     private const int HtBottom = 15;
     private const int HtBottomLeft = 16;
     private const int HtBottomRight = 17;
+    private const int MobileViewWidth = 390;
+    private const int MobileViewHeight = 844;
+    private const string MobileUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool SetWindowPos(
@@ -111,6 +118,7 @@ public partial class WebViewWindow : Window
     public IReadOnlyList<WebAppTabState> CurrentTabs => GetCurrentTabs();
     public int CurrentActiveTabIndex => _activeTab == null ? 0 : Math.Max(0, _tabs.IndexOf(_activeTab));
     public bool IsAlwaysOnTop => _isAlwaysOnTop;
+    public bool IsMobileView => _isMobileView;
     public bool OpenNewWindowsExternally { get; set; }
 
     public WebViewWindow(string? userDataFolder = null)
@@ -122,6 +130,8 @@ public partial class WebViewWindow : Window
         SourceInitialized += OnSourceInitialized;
         OpacitySlider.ValueChanged += OpacitySlider_ValueChanged;
         UpdateOpacitySlider(_visualOpacity);
+        UpdateMobileViewButton();
+        UpdateThemeToggleButton();
         InitializeWebView();
     }
 
@@ -219,12 +229,12 @@ public partial class WebViewWindow : Window
         tab.TitleText.Text = tab.Title;
         tab.TitleText.TextTrimming = TextTrimming.CharacterEllipsis;
         tab.TitleText.VerticalAlignment = VerticalAlignment.Center;
-        tab.TitleText.Width = 104;
+        tab.TitleText.Width = 82;
 
         tab.CloseText.Text = "x";
         tab.CloseText.FontSize = 12;
         tab.CloseText.FontWeight = FontWeights.Bold;
-        tab.CloseText.Margin = new Thickness(8, 0, 0, 0);
+        tab.CloseText.Margin = new Thickness(6, 0, 0, 0);
         tab.CloseText.VerticalAlignment = VerticalAlignment.Center;
         tab.CloseText.Opacity = 0.7;
         tab.CloseText.Cursor = System.Windows.Input.Cursors.Hand;
@@ -324,15 +334,11 @@ public partial class WebViewWindow : Window
 
             await tab.WebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(BuildOpacityScript());
 
-            var pendingUserAgent = tab.PendingUserAgent ?? _pendingUserAgent;
-            if (!string.IsNullOrEmpty(pendingUserAgent))
+            ApplyEffectiveUserAgent(tab);
+            tab.PendingUserAgent = null;
+            if (tab == _activeTab)
             {
-                tab.WebView.CoreWebView2.Settings.UserAgent = pendingUserAgent;
-                tab.PendingUserAgent = null;
-                if (tab == _activeTab)
-                {
-                    _pendingUserAgent = null;
-                }
+                _pendingUserAgent = null;
             }
 
             var pendingZoomFactor = tab.PendingZoomFactor ?? _pendingZoomFactor;
@@ -534,28 +540,102 @@ public partial class WebViewWindow : Window
     /// <summary>Set the User-Agent string. Empty string restores the default.</summary>
     public void SetUserAgent(string? userAgent)
     {
-        var tab = _activeTab;
-        if (tab?.IsInitialized == true && tab.WebView.CoreWebView2 != null)
+        _baseUserAgent = string.IsNullOrEmpty(userAgent) ? null : userAgent;
+        _pendingUserAgent = _baseUserAgent;
+
+        foreach (var tab in _tabs)
         {
-            if (string.IsNullOrEmpty(userAgent))
+            tab.PendingUserAgent = _baseUserAgent;
+            ApplyEffectiveUserAgent(tab);
+        }
+    }
+
+    public void SetMobileView(bool enabled, bool reloadActiveTab = true)
+    {
+        if (_isMobileView == enabled)
+        {
+            return;
+        }
+
+        _isMobileView = enabled;
+
+        if (enabled)
+        {
+            if (WindowState == WindowState.Normal)
             {
-                // Reset to default by setting empty string
-                // WebView2 treats empty as "use default"
-                tab.WebView.CoreWebView2.Settings.UserAgent = "";
-            }
-            else
-            {
-                tab.WebView.CoreWebView2.Settings.UserAgent = userAgent;
+                _desktopWidthBeforeMobile = Width;
+                _desktopHeightBeforeMobile = Height;
+                Width = MobileViewWidth;
+                Height = Math.Min(MobileViewHeight, SystemParameters.WorkArea.Height);
             }
         }
-        else
+        else if (WindowState == WindowState.Normal)
         {
-            _pendingUserAgent = userAgent;
-            if (tab != null)
+            if (_desktopWidthBeforeMobile is > 0)
             {
-                tab.PendingUserAgent = userAgent;
+                Width = _desktopWidthBeforeMobile.Value;
+            }
+
+            if (_desktopHeightBeforeMobile is > 0)
+            {
+                Height = _desktopHeightBeforeMobile.Value;
             }
         }
+
+        foreach (var tab in _tabs)
+        {
+            ApplyEffectiveUserAgent(tab);
+        }
+
+        UpdateMobileViewButton();
+
+        if (reloadActiveTab && _activeTab?.IsInitialized == true)
+        {
+            _activeTab.WebView.CoreWebView2?.Reload();
+        }
+    }
+
+    private void ApplyEffectiveUserAgent(BrowserTab tab)
+    {
+        var userAgent = _isMobileView
+            ? MobileUserAgent
+            : tab.PendingUserAgent ?? _pendingUserAgent ?? _baseUserAgent;
+
+        if (tab.IsInitialized && tab.WebView.CoreWebView2 != null)
+        {
+            tab.WebView.CoreWebView2.Settings.UserAgent = string.IsNullOrEmpty(userAgent) ? "" : userAgent;
+            return;
+        }
+
+        tab.PendingUserAgent = userAgent;
+    }
+
+    private void UpdateMobileViewButton()
+    {
+        MobileViewButton.Foreground = _isMobileView
+            ? ThemeManager.GetBrush("AccentBrush")
+            : ThemeManager.GetBrush("TextSecondaryBrush");
+        MobileViewButton.ToolTip = _isMobileView ? "데스크톱 보기로 전환" : "모바일 보기";
+    }
+
+    private void ToggleThemeMode()
+    {
+        var currentMode = ThemeManager.NormalizeThemeMode(App.SettingsStore.Settings.ThemeMode);
+        var nextMode = ThemeManager.IsLight(currentMode) ? "Dark" : "Light";
+
+        App.SettingsStore.Update(settings => settings.ThemeMode = nextMode);
+        ThemeManager.Apply(nextMode);
+        UpdateThemeToggleButton();
+        RefreshActiveTabUi();
+    }
+
+    private void UpdateThemeToggleButton()
+    {
+        var isLight = ThemeManager.IsLight(App.SettingsStore.Settings.ThemeMode);
+        ThemeToggleButton.Foreground = isLight
+            ? ThemeManager.GetBrush("AccentBrush")
+            : ThemeManager.GetBrush("TextSecondaryBrush");
+        ThemeToggleButton.ToolTip = isLight ? "다크 모드로 전환" : "라이트 모드로 전환";
     }
 
     #region WebView2 Events
@@ -771,6 +851,16 @@ public partial class WebViewWindow : Window
         NavigateTo(_homeUrl);
     }
 
+    private void MobileViewButton_Click(object sender, RoutedEventArgs e)
+    {
+        SetMobileView(!_isMobileView);
+    }
+
+    private void ThemeToggleButton_Click(object sender, RoutedEventArgs e)
+    {
+        ToggleThemeMode();
+    }
+
     private void OpenExternalButton_Click(object sender, RoutedEventArgs e)
     {
         OpenCurrentInExternalBrowser();
@@ -779,6 +869,31 @@ public partial class WebViewWindow : Window
     private void NewTabButton_Click(object sender, RoutedEventArgs e)
     {
         CreateNewTab(_homeUrl);
+    }
+
+    private void ScrollTabsLeftButton_Click(object sender, RoutedEventArgs e)
+    {
+        ScrollTabsBy(-140);
+    }
+
+    private void ScrollTabsRightButton_Click(object sender, RoutedEventArgs e)
+    {
+        ScrollTabsBy(140);
+    }
+
+    private void TabScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        ScrollTabsBy(e.Delta > 0 ? -120 : 120);
+        e.Handled = true;
+    }
+
+    private void ScrollTabsBy(double offset)
+    {
+        var targetOffset = Math.Clamp(
+            TabScrollViewer.HorizontalOffset + offset,
+            0,
+            TabScrollViewer.ScrollableWidth);
+        TabScrollViewer.ScrollToHorizontalOffset(targetOffset);
     }
 
     private void OpacitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -1109,6 +1224,9 @@ public partial class WebViewWindow : Window
         AddressInput.Text = _activeTab.WebView.CoreWebView2?.Source ?? _activeTab.PendingUrl ?? "";
         ZoomText.Text = $"{(int)(_activeTab.WebView.ZoomFactor * 100)}%";
         Title = string.IsNullOrWhiteSpace(_activeTab.Title) ? "TrayWebApp" : _activeTab.Title;
+        UpdateMobileViewButton();
+        UpdateThemeToggleButton();
+        _activeTab.HeaderButton.Dispatcher.BeginInvoke(() => _activeTab?.HeaderButton.BringIntoView());
         _ = ApplyWebContentOpacityAsync(_activeTab);
         RaiseBrowserStateChanged();
     }

@@ -30,6 +30,7 @@ TrayWebApp은 Windows 시스템 트레이에서 실행되는 WebView2 기반 미
 - 전역 단축키로 앱 실행 및 앱 검색
 - 앱별 URL, 창 크기, User-Agent, 항상 위 설정
 - 앱별 독립 세션 옵션 및 독립 세션 초기화
+- 현재 창 모바일 보기 전환
 - 다크 모드와 라이트 모드
 - 창 크기 프리셋 및 창 배치 프리셋
 - 전방향 창 크기 조절
@@ -49,12 +50,14 @@ TrayWebApp은 Windows 시스템 트레이에서 실행되는 WebView2 기반 미
 - 트레이 아이콘 왼쪽 클릭: 활성 창 열기/숨기기
 - 트레이 아이콘 오른쪽 클릭: 앱 목록, 열린 창, 최근 앱, 창 크기, 창 배치, 투명도, 테마, 설정, 종료 메뉴
 - 앱 메뉴 선택: 해당 웹앱 창 열기 또는 이미 열린 창 앞으로 가져오기
+- 상단 해 모양 아이콘: 다크 모드와 라이트 모드 즉시 전환
 - 하단 `+` 버튼: 새 탭 열기
 - 탭 `x`: 탭 닫기
 - 탭 가운데 클릭: 탭 닫기
 - 탭 우클릭: 탭 복제, 탭 닫기, 다른 탭 닫기, 오른쪽 탭 닫기, 닫은 탭 다시 열기
 - 앱 관리 화면의 `독립 세션 사용`: 해당 앱만 별도 쿠키/로그인 저장소 사용
 - 앱 관리 화면의 `세션 초기화`: 독립 세션 앱의 쿠키와 로그인 데이터 삭제
+- 상단 휴대폰 아이콘 또는 트레이 메뉴의 `모바일 보기`: 현재 창을 모바일 User-Agent와 모바일 크기로 전환
 - 설정 화면의 `테마`: 다크 모드와 라이트 모드 전환
 
 ## 단축키
@@ -106,8 +109,8 @@ dotnet run --project src\TrayWebApp.App
 생성 위치:
 
 - 실행 파일: `publish\win-x64-final\TrayWebApp.exe`
-- 포터블 zip: `publish\TrayWebApp-1.0.1-win-x64-*.zip`
-- 설치 파일: `publish\installer\TrayWebApp-Setup-1.0.1.exe`
+- 포터블 zip: `publish\TrayWebApp-1.0.2-win-x64-*.zip`
+- 설치 파일: `publish\installer\TrayWebApp-Setup-1.0.2.exe`
 
 설치 파일 생성을 건너뛰려면 다음처럼 실행합니다.
 
@@ -125,14 +128,14 @@ Microsoft Store 제출용 MSIX 패키지를 만들 수 있습니다.
 
 생성 위치:
 
-- Store 업로드 권장 파일: `publish\msix\TrayWebApp_1.0.1.0_x64.msixupload`
-- 개별 MSIX 패키지: `publish\msix\TrayWebApp_1.0.1.0_x64.msix`
+- Store 업로드 권장 파일: `publish\msix\TrayWebApp_1.0.2.0_x64.msixupload`
+- 개별 MSIX 패키지: `publish\msix\TrayWebApp_1.0.2.0_x64.msix`
 
 자세한 내용은 [MSIX.md](MSIX.md)를 참고하세요.
 
 ## 설치
 
-1. `TrayWebApp-Setup-1.0.1.exe`를 실행합니다.
+1. `TrayWebApp-Setup-1.0.2.exe`를 실행합니다.
 2. 설치 마법사를 진행합니다.
 3. 설치 후 TrayWebApp을 실행하면 트레이 아이콘이 표시됩니다.
 4. 필요하면 설정에서 `Windows 시작 시 실행`을 켭니다.

@@ -69,10 +69,10 @@
             <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="10,3"/>
+            <Setter Property="Padding" Value="8,3"/>
             <Setter Property="Margin" Value="2,3,0,2"/>
-            <Setter Property="MinWidth" Value="92"/>
-            <Setter Property="MaxWidth" Value="150"/>
+            <Setter Property="MinWidth" Value="76"/>
+            <Setter Property="MaxWidth" Value="132"/>
             <Setter Property="Height" Value="24"/>
             <Setter Property="FontSize" Value="11"/>
             <Setter Property="FontFamily" Value="Segoe UI"/>
@@ -166,6 +166,20 @@
                                 </Canvas>
                             </Viewbox>
                         </Button>
+                        <Button x:Name="MobileViewButton" Style="{StaticResource ToolbarButton}"
+                                Click="MobileViewButton_Click" ToolTip="모바일 보기">
+                            <Viewbox Width="15" Height="15">
+                                <Canvas Width="18" Height="18">
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                          StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                          StrokeLineJoin="Round" Fill="Transparent"
+                                          Data="M6,2.8 L12,2.8 C12.8,2.8 13.4,3.4 13.4,4.2 L13.4,13.8 C13.4,14.6 12.8,15.2 12,15.2 L6,15.2 C5.2,15.2 4.6,14.6 4.6,13.8 L4.6,4.2 C4.6,3.4 5.2,2.8 6,2.8"/>
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                          StrokeThickness="1.8" StrokeStartLineCap="Round"
+                                          Data="M7.6,12.7 L10.4,12.7"/>
+                                </Canvas>
+                            </Viewbox>
+                        </Button>
                     </StackPanel>
 
                     <!-- Opacity control -->
@@ -191,6 +205,19 @@
 
                     <!-- Window controls -->
                     <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal" Margin="0,0,4,0">
+                        <Button x:Name="ThemeToggleButton" Style="{StaticResource ToolbarButton}"
+                                Click="ThemeToggleButton_Click" ToolTip="라이트 모드로 전환">
+                            <Viewbox Width="15" Height="15">
+                                <Canvas Width="18" Height="18">
+                                    <Ellipse Width="7" Height="7" Canvas.Left="5.5" Canvas.Top="5.5"
+                                             Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                             StrokeThickness="1.8" Fill="Transparent"/>
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                          StrokeThickness="1.7" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                          Data="M9,2.2 L9,3.4 M9,14.6 L9,15.8 M2.2,9 L3.4,9 M14.6,9 L15.8,9 M4.2,4.2 L5,5 M13,13 L13.8,13.8 M13.8,4.2 L13,5 M5,13 L4.2,13.8"/>
+                                </Canvas>
+                            </Viewbox>
+                        </Button>
                         <Button x:Name="PinButton" Style="{StaticResource ToolbarButton}"
                                 Click="PinButton_Click" ToolTip="항상 위">
                             <Viewbox Width="15" Height="15">
@@ -257,9 +284,19 @@
                 <Button DockPanel.Dock="Right" Content="+" Style="{StaticResource ToolbarButton}"
                         Click="NewTabButton_Click" ToolTip="새 탭" FontSize="14"
                         MinWidth="30" Margin="4,3,6,3"/>
-                <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                <Button DockPanel.Dock="Right" Content="›" Style="{StaticResource ToolbarButton}"
+                        Click="ScrollTabsRightButton_Click" ToolTip="오른쪽 탭 보기"
+                        MinWidth="24" Margin="0,3,0,3"/>
+                <Button DockPanel.Dock="Left" Content="‹" Style="{StaticResource ToolbarButton}"
+                        Click="ScrollTabsLeftButton_Click" ToolTip="왼쪽 탭 보기"
+                        MinWidth="24" Margin="6,3,0,3"/>
+                <ScrollViewer x:Name="TabScrollViewer"
+                              HorizontalScrollBarVisibility="Hidden"
                               VerticalScrollBarVisibility="Disabled"
-                              Margin="6,0,0,0">
+                              PreviewMouseWheel="TabScrollViewer_PreviewMouseWheel"
+                              PanningMode="HorizontalOnly"
+                              CanContentScroll="False"
+                              Margin="2,0,0,0">
                     <StackPanel x:Name="TabsHost" Orientation="Horizontal"/>
                 </ScrollViewer>
             </DockPanel>
