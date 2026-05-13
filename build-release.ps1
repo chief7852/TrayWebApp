@@ -5,7 +5,7 @@ param(
     [string]$Configuration = "Release",
     [string]$Runtime = "win-x64",
     [string]$OutputDir = "publish\win-x64-final",
-    [string]$Version = "1.0.2",
+    [string]$Version = "1.0.3",
     [switch]$SkipInstaller
 )
 

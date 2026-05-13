@@ -2,7 +2,7 @@ param(
     [string]$PackageIdentityName = "chief7852.TrayWebApp",
     [string]$Publisher = "CN=chief7852",
     [string]$PublisherDisplayName = "chief7852",
-    [string]$Version = "1.0.2.0",
+    [string]$Version = "1.0.3.0",
     [string]$Runtime = "win-x64",
     [string]$Configuration = "Release",
     [string]$OutputDir = "publish\msix",

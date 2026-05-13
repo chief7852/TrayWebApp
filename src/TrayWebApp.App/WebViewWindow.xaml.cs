@@ -929,7 +929,6 @@ public partial class WebViewWindow : Window
         App.SettingsStore.Update(settings => settings.WindowOpacity = value);
 
         slider.Focus();
-        slider.CaptureMouse();
         e.Handled = true;
     }
 

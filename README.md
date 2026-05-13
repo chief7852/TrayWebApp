@@ -109,8 +109,8 @@ dotnet run --project src\TrayWebApp.App
 생성 위치:
 
 - 실행 파일: `publish\win-x64-final\TrayWebApp.exe`
-- 포터블 zip: `publish\TrayWebApp-1.0.2-win-x64-*.zip`
-- 설치 파일: `publish\installer\TrayWebApp-Setup-1.0.2.exe`
+- 포터블 zip: `publish\TrayWebApp-1.0.3-win-x64-*.zip`
+- 설치 파일: `publish\installer\TrayWebApp-Setup-1.0.3.exe`
 
 설치 파일 생성을 건너뛰려면 다음처럼 실행합니다.
 
@@ -128,14 +128,14 @@ Microsoft Store 제출용 MSIX 패키지를 만들 수 있습니다.
 
 생성 위치:
 
-- Store 업로드 권장 파일: `publish\msix\TrayWebApp_1.0.2.0_x64.msixupload`
-- 개별 MSIX 패키지: `publish\msix\TrayWebApp_1.0.2.0_x64.msix`
+- Store 업로드 권장 파일: `publish\msix\TrayWebApp_1.0.3.0_x64.msixupload`
+- 개별 MSIX 패키지: `publish\msix\TrayWebApp_1.0.3.0_x64.msix`
 
 자세한 내용은 [MSIX.md](MSIX.md)를 참고하세요.
 
 ## 설치
 
-1. `TrayWebApp-Setup-1.0.2.exe`를 실행합니다.
+1. `TrayWebApp-Setup-1.0.3.exe`를 실행합니다.
 2. 설치 마법사를 진행합니다.
 3. 설치 후 TrayWebApp을 실행하면 트레이 아이콘이 표시됩니다.
 4. 필요하면 설정에서 `Windows 시작 시 실행`을 켭니다.

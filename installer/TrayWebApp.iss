@@ -1,7 +1,7 @@
 #define MyAppName "TrayWebApp"
 #define MyAppExeName "TrayWebApp.exe"
 #ifndef AppVersion
-#define AppVersion "1.0.2"
+#define AppVersion "1.0.3"
 #endif
 #ifndef PublishDir
 #define PublishDir "..\publish\win-x64-final"
