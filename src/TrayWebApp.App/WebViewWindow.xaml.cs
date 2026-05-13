@@ -908,6 +908,31 @@ public partial class WebViewWindow : Window
         App.SettingsStore.Update(s => s.WindowOpacity = opacity);
     }
 
+    private void OpacitySlider_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not Slider slider)
+        {
+            return;
+        }
+
+        var clickX = e.GetPosition(slider).X;
+        var ratio = slider.ActualWidth <= 0 ? 0 : Math.Clamp(clickX / slider.ActualWidth, 0, 1);
+        var value = slider.Minimum + ((slider.Maximum - slider.Minimum) * ratio);
+
+        if (slider.IsSnapToTickEnabled && slider.TickFrequency > 0)
+        {
+            value = Math.Round(value / slider.TickFrequency) * slider.TickFrequency;
+        }
+
+        value = Math.Round(Math.Clamp(value, slider.Minimum, slider.Maximum), 2);
+        SetVisualOpacity(value);
+        App.SettingsStore.Update(settings => settings.WindowOpacity = value);
+
+        slider.Focus();
+        slider.CaptureMouse();
+        e.Handled = true;
+    }
+
     private void PinButton_Click(object sender, RoutedEventArgs e)
     {
         SetAlwaysOnTop(!_isAlwaysOnTop);

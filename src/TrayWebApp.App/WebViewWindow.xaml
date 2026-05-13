@@ -196,6 +196,7 @@
                                 Minimum="0.2" Maximum="1.0" Value="1.0"
                                 TickFrequency="0.05" IsSnapToTickEnabled="True"
                                 VerticalAlignment="Center"
+                                PreviewMouseLeftButtonDown="OpacitySlider_PreviewMouseLeftButtonDown"
                                 ToolTip="창과 웹페이지 투명도"/>
                         <TextBlock Grid.Column="2" x:Name="OpacityValueText" Text="100%"
                                    Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"
