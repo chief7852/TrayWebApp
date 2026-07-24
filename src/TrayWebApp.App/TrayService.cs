@@ -410,7 +410,7 @@ public class TrayService : IDisposable
         opacityMenu.DropDown.BackColor = ThemeManager.ToDrawingColor("BackgroundBrush");
         opacityMenu.DropDown.Renderer = new DarkMenuRenderer();
 
-        foreach (var option in new[] { 1.0, 0.85, 0.7, 0.55, 0.4, 0.3 })
+        foreach (var option in new[] { 1.0, 0.85, 0.7, 0.55, 0.4, 0.3, 0.2, 0.1 })
         {
             var percent = (int)(option * 100);
             var item = new ToolStripMenuItem($"{percent}%")
@@ -850,10 +850,12 @@ public class TrayService : IDisposable
         };
         window.SetAlwaysOnTop(settings.AlwaysOnTop || app?.AlwaysOnTop == true);
         window.SetVisualOpacity(settings.WindowOpacity);
+        window.SetHoverRevealMode(settings.HoverRevealMode);
         window.OpenNewWindowsExternally = settings.OpenNewWindowsExternally;
         window.SetAddressBarVisible(settings.ShowAddressBar);
         window.BrowserStateChanged += OnBrowserStateChanged;
         window.AlwaysOnTopChanged += OnAlwaysOnTopChanged;
+        window.HoverRevealModeChanged += OnHoverRevealModeChanged;
         window.PreviewKeyDown += OnWebViewWindowPreviewKeyDown;
         _webAppWindows[windowKey] = window;
         _windowAppIds[window] = windowKey;
@@ -890,7 +892,10 @@ public class TrayService : IDisposable
 
         window.Deactivated += (s, e) =>
         {
-            if (_settingsStore.Settings.HideOnDeactivate && window.IsVisible && !window.IsAlwaysOnTop)
+            if (_settingsStore.Settings.HideOnDeactivate &&
+                !_settingsStore.Settings.HoverRevealMode &&
+                window.IsVisible &&
+                !window.IsAlwaysOnTop)
             {
                 SaveWindowState(window);
                 window.Hide();
@@ -1026,6 +1031,19 @@ public class TrayService : IDisposable
         RebuildMenu();
     }
 
+    private void OnHoverRevealModeChanged(object? sender, HoverRevealModeChangedEventArgs e)
+    {
+        _settingsStore.Update(settings => settings.HoverRevealMode = e.IsEnabled);
+
+        foreach (var window in GetLoadedWindows())
+        {
+            if (!ReferenceEquals(window, sender))
+            {
+                window.SetHoverRevealMode(e.IsEnabled);
+            }
+        }
+    }
+
     private void SetAlwaysOnTop(bool enabled)
     {
         _settingsStore.Update(s => s.AlwaysOnTop = enabled);
@@ -1057,6 +1075,7 @@ public class TrayService : IDisposable
         window.SetHomeUrl(app.Url);
         window.SetZoomFactor(app.ZoomFactor);
         window.SetVisualOpacity(_settingsStore.Settings.WindowOpacity);
+        window.SetHoverRevealMode(_settingsStore.Settings.HoverRevealMode);
         window.OpenNewWindowsExternally = _settingsStore.Settings.OpenNewWindowsExternally;
         window.SetAddressBarVisible(_settingsStore.Settings.ShowAddressBar);
 

@@ -232,6 +232,7 @@ public partial class SettingsWindow : Window
             s.HideOnClose = defaults.HideOnClose;
             s.HideOnDeactivate = defaults.HideOnDeactivate;
             s.WindowOpacity = defaults.WindowOpacity;
+            s.HoverRevealMode = defaults.HoverRevealMode;
             s.OpenNewWindowsExternally = defaults.OpenNewWindowsExternally;
             s.AutoAllowNotifications = defaults.AutoAllowNotifications;
             s.ShowAddressBar = defaults.ShowAddressBar;

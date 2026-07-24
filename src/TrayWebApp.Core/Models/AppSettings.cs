@@ -32,8 +32,11 @@ public class AppSettings
     /// <summary>Hide the window when it loses focus</summary>
     public bool HideOnDeactivate { get; set; } = false;
 
-    /// <summary>Window opacity (0.0 - 1.0)</summary>
+    /// <summary>Window opacity (0.1 - 1.0)</summary>
     public double WindowOpacity { get; set; } = 1.0;
+
+    /// <summary>Cover web content when the mouse pointer is outside the window</summary>
+    public bool HoverRevealMode { get; set; } = false;
 
     /// <summary>Last used web app ID</summary>
     public string? LastAppId { get; set; }

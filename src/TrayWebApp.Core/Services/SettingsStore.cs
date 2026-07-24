@@ -73,7 +73,7 @@ public class SettingsStore
     {
         settings.WindowWidth = Math.Clamp(settings.WindowWidth, 240, 3840);
         settings.WindowHeight = Math.Clamp(settings.WindowHeight, 240, 2160);
-        settings.WindowOpacity = Math.Clamp(settings.WindowOpacity, 0.2, 1.0);
+        settings.WindowOpacity = Math.Clamp(settings.WindowOpacity, 0.1, 1.0);
 
         if (string.IsNullOrWhiteSpace(settings.DefaultUrl))
         {

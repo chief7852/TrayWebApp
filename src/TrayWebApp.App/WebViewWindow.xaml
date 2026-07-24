@@ -193,7 +193,7 @@
                                    FontSize="11" FontFamily="Segoe UI"
                                    VerticalAlignment="Center" Margin="0,0,8,0"/>
                         <Slider Grid.Column="1" x:Name="OpacitySlider"
-                                Minimum="0.2" Maximum="1.0" Value="1.0"
+                                Minimum="0.1" Maximum="1.0" Value="1.0"
                                 TickFrequency="0.05" IsSnapToTickEnabled="True"
                                 VerticalAlignment="Center"
                                 PreviewMouseLeftButtonDown="OpacitySlider_PreviewMouseLeftButtonDown"
@@ -309,6 +309,22 @@
                                FontSize="11" FontFamily="Segoe UI" VerticalAlignment="Center"
                                TextTrimming="CharacterEllipsis"/>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button x:Name="HoverRevealButton" Style="{StaticResource ToolbarButton}"
+                                Click="HoverRevealButton_Click"
+                                ToolTip="마우스를 올릴 때만 화면 표시"
+                                MinWidth="24" Height="22" Padding="4,1" Margin="0,0,4,0">
+                            <Viewbox Width="14" Height="14">
+                                <Canvas Width="18" Height="18">
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                          StrokeThickness="1.7" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                          StrokeLineJoin="Round" Fill="Transparent"
+                                          Data="M2.2,9 C4,5.8 6.2,4.2 9,4.2 C11.8,4.2 14,5.8 15.8,9 C14,12.2 11.8,13.8 9,13.8 C6.2,13.8 4,12.2 2.2,9 Z"/>
+                                    <Ellipse Width="4.4" Height="4.4" Canvas.Left="6.8" Canvas.Top="6.8"
+                                             Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                             StrokeThickness="1.7" Fill="Transparent"/>
+                                </Canvas>
+                            </Viewbox>
+                        </Button>
                         <TextBlock x:Name="ZoomText" Text="100%" Foreground="{DynamicResource TextMutedBrush}"
                                    FontSize="11" FontFamily="Segoe UI" VerticalAlignment="Center"
                                    Margin="0,0,8,0"/>

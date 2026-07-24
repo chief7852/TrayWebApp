@@ -8,6 +8,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 using TrayWebApp.Core.Models;
@@ -30,6 +31,11 @@ public sealed class BrowserStateChangedEventArgs : EventArgs
 public sealed class AlwaysOnTopChangedEventArgs : EventArgs
 {
     public bool IsAlwaysOnTop { get; init; }
+}
+
+public sealed class HoverRevealModeChangedEventArgs : EventArgs
+{
+    public bool IsEnabled { get; init; }
 }
 
 internal sealed class BrowserTab
@@ -76,6 +82,9 @@ public partial class WebViewWindow : Window
     private bool _suppressOpacitySliderEvent;
     private bool _isAlwaysOnTop;
     private bool _isMobileView;
+    private bool _isHoverRevealEnabled;
+    private bool _isHoverCoverVisible;
+    private readonly DispatcherTimer _hoverRevealTimer;
     private double? _desktopWidthBeforeMobile;
     private double? _desktopHeightBeforeMobile;
 
@@ -109,8 +118,21 @@ public partial class WebViewWindow : Window
         int cy,
         uint uFlags);
 
+    [DllImport("user32.dll")]
+    private static extern bool GetWindowRect(IntPtr hWnd, out NativeRect rect);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeRect
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+
     public event EventHandler<BrowserStateChangedEventArgs>? BrowserStateChanged;
     public event EventHandler<AlwaysOnTopChangedEventArgs>? AlwaysOnTopChanged;
+    public event EventHandler<HoverRevealModeChangedEventArgs>? HoverRevealModeChanged;
 
     public WebView2 WebView => _activeTab?.WebView ?? throw new InvalidOperationException("No active browser tab.");
     public string? CurrentUrl => _activeTab?.WebView.CoreWebView2?.Source;
@@ -128,11 +150,18 @@ public partial class WebViewWindow : Window
             ? AppPaths.WebViewDataDirectory
             : userDataFolder;
         InitializeComponent();
+        _hoverRevealTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(100)
+        };
+        _hoverRevealTimer.Tick += (_, _) => UpdateHoverRevealCoverFromCursor();
+        Closed += (_, _) => _hoverRevealTimer.Stop();
         SourceInitialized += OnSourceInitialized;
         OpacitySlider.ValueChanged += OpacitySlider_ValueChanged;
         UpdateOpacitySlider(_visualOpacity);
         UpdateMobileViewButton();
         UpdateThemeToggleButton();
+        UpdateHoverRevealButton();
         InitializeWebView();
     }
 
@@ -365,6 +394,7 @@ public partial class WebViewWindow : Window
             }
 
             await ApplyWebContentOpacityAsync(tab);
+            await ApplyHoverRevealCoverAsync(tab);
 
             if (tab == _activeTab)
             {
@@ -487,10 +517,27 @@ public partial class WebViewWindow : Window
 
     public void SetVisualOpacity(double opacity)
     {
-        _visualOpacity = Math.Clamp(opacity, 0.2, 1.0);
+        _visualOpacity = Math.Clamp(opacity, 0.1, 1.0);
         Opacity = _visualOpacity;
         UpdateOpacitySlider(_visualOpacity);
         _ = ApplyWebContentOpacityAsync();
+    }
+
+    public void SetHoverRevealMode(bool enabled)
+    {
+        _isHoverRevealEnabled = enabled;
+        UpdateHoverRevealButton();
+
+        if (enabled)
+        {
+            _hoverRevealTimer.Start();
+            UpdateHoverRevealCoverFromCursor(force: true);
+        }
+        else
+        {
+            _hoverRevealTimer.Stop();
+            SetHoverRevealCoverVisible(false, force: true);
+        }
     }
 
     public void SetAlwaysOnTop(bool enabled)
@@ -619,6 +666,16 @@ public partial class WebViewWindow : Window
         MobileViewButton.ToolTip = _isMobileView ? "데스크톱 보기로 전환" : "모바일 보기";
     }
 
+    private void UpdateHoverRevealButton()
+    {
+        HoverRevealButton.Foreground = _isHoverRevealEnabled
+            ? ThemeManager.GetBrush("AccentBrush")
+            : ThemeManager.GetBrush("TextSecondaryBrush");
+        HoverRevealButton.ToolTip = _isHoverRevealEnabled
+            ? "마우스 오버 표시 모드 끄기"
+            : "마우스를 올릴 때만 화면 표시";
+    }
+
     private void ToggleThemeMode()
     {
         var currentMode = ThemeManager.NormalizeThemeMode(App.SettingsStore.Settings.ThemeMode);
@@ -661,6 +718,7 @@ public partial class WebViewWindow : Window
 
         StatusText.Text = e.IsSuccess ? "준비됨" : $"오류: {e.WebErrorStatus}";
         _ = ApplyWebContentOpacityAsync();
+        _ = ApplyHoverRevealCoverAsync();
         RaiseBrowserStateChanged();
     }
 
@@ -860,6 +918,15 @@ public partial class WebViewWindow : Window
     private void ThemeToggleButton_Click(object sender, RoutedEventArgs e)
     {
         ToggleThemeMode();
+    }
+
+    private void HoverRevealButton_Click(object sender, RoutedEventArgs e)
+    {
+        SetHoverRevealMode(!_isHoverRevealEnabled);
+        HoverRevealModeChanged?.Invoke(this, new HoverRevealModeChangedEventArgs
+        {
+            IsEnabled = _isHoverRevealEnabled
+        });
     }
 
     private void OpenExternalButton_Click(object sender, RoutedEventArgs e)
@@ -1271,8 +1338,10 @@ public partial class WebViewWindow : Window
         Title = string.IsNullOrWhiteSpace(_activeTab.Title) ? "TrayWebApp" : _activeTab.Title;
         UpdateMobileViewButton();
         UpdateThemeToggleButton();
+        UpdateHoverRevealButton();
         _activeTab.HeaderButton.Dispatcher.BeginInvoke(() => _activeTab?.HeaderButton.BringIntoView());
         _ = ApplyWebContentOpacityAsync(_activeTab);
+        _ = ApplyHoverRevealCoverAsync(_activeTab);
         RaiseBrowserStateChanged();
     }
 
@@ -1381,6 +1450,76 @@ public partial class WebViewWindow : Window
         }
     }
 
+    private void UpdateHoverRevealCoverFromCursor(bool force = false)
+    {
+        if (!_isHoverRevealEnabled)
+        {
+            return;
+        }
+
+        if (!IsVisible)
+        {
+            SetHoverRevealCoverVisible(true, force);
+            return;
+        }
+
+        var handle = new WindowInteropHelper(this).Handle;
+        if (handle == IntPtr.Zero || !GetWindowRect(handle, out var rect))
+        {
+            return;
+        }
+
+        var cursor = System.Windows.Forms.Cursor.Position;
+        var isInside = cursor.X >= rect.Left &&
+            cursor.X < rect.Right &&
+            cursor.Y >= rect.Top &&
+            cursor.Y < rect.Bottom;
+
+        SetHoverRevealCoverVisible(!isInside, force);
+    }
+
+    private void SetHoverRevealCoverVisible(bool visible, bool force = false)
+    {
+        if (!force && _isHoverCoverVisible == visible)
+        {
+            return;
+        }
+
+        _isHoverCoverVisible = visible;
+        foreach (var tab in _tabs)
+        {
+            _ = ApplyHoverRevealCoverAsync(tab);
+        }
+    }
+
+    private async Task ApplyHoverRevealCoverAsync()
+    {
+        if (_activeTab == null)
+        {
+            return;
+        }
+
+        await ApplyHoverRevealCoverAsync(_activeTab);
+    }
+
+    private async Task ApplyHoverRevealCoverAsync(BrowserTab tab)
+    {
+        if (!tab.IsInitialized || tab.WebView.CoreWebView2 == null)
+        {
+            return;
+        }
+
+        try
+        {
+            var shouldCover = _isHoverRevealEnabled && _isHoverCoverVisible;
+            await tab.WebView.CoreWebView2.ExecuteScriptAsync(BuildHoverRevealCoverScript(shouldCover));
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warn($"Failed to apply hover reveal cover: {ex.Message}");
+        }
+    }
+
     private async Task ApplyWebContentOpacityAsync()
     {
         if (_activeTab == null)
@@ -1411,10 +1550,13 @@ public partial class WebViewWindow : Window
     private string BuildOpacityScript()
     {
         var opacity = _visualOpacity.ToString("0.##", CultureInfo.InvariantCulture);
+        var scrollbarThumbOpacity = (_visualOpacity * 0.65).ToString("0.###", CultureInfo.InvariantCulture);
+        var scrollbarTrackOpacity = (_visualOpacity * 0.12).ToString("0.###", CultureInfo.InvariantCulture);
 
         return $$"""
             (() => {
                 const opacity = {{opacity}};
+                const scrollbarStyleId = '__traywebapp-opacity-scrollbars';
                 const apply = () => {
                     const root = document.documentElement;
                     if (!root) return;
@@ -1422,10 +1564,34 @@ public partial class WebViewWindow : Window
                     root.style.setProperty('background', 'transparent', 'important');
                     root.style.setProperty('opacity', String(opacity), 'important');
                     root.style.setProperty('transition', 'opacity 80ms linear', 'important');
+                    root.style.setProperty(
+                        'scrollbar-color',
+                        'rgba(128, 128, 128, {{scrollbarThumbOpacity}}) rgba(0, 0, 0, {{scrollbarTrackOpacity}})',
+                        'important');
 
                     if (document.body) {
                         document.body.style.setProperty('background', 'transparent', 'important');
                     }
+
+                    let scrollbarStyle = document.getElementById(scrollbarStyleId);
+                    if (!scrollbarStyle) {
+                        scrollbarStyle = document.createElement('style');
+                        scrollbarStyle.id = scrollbarStyleId;
+                        (document.head || root).appendChild(scrollbarStyle);
+                    }
+
+                    scrollbarStyle.textContent = `
+                        ::-webkit-scrollbar-track,
+                        ::-webkit-scrollbar-track-piece,
+                        ::-webkit-scrollbar-corner {
+                            background-color: rgba(0, 0, 0, {{scrollbarTrackOpacity}}) !important;
+                        }
+                        ::-webkit-scrollbar-thumb {
+                            background-color: rgba(128, 128, 128, {{scrollbarThumbOpacity}}) !important;
+                            border: 2px solid transparent !important;
+                            background-clip: padding-box !important;
+                        }
+                    `;
                 };
 
                 apply();
@@ -1433,6 +1599,36 @@ public partial class WebViewWindow : Window
                 if (document.readyState === 'loading') {
                     document.addEventListener('DOMContentLoaded', apply, { once: true });
                 }
+            })();
+            """;
+    }
+
+    private static string BuildHoverRevealCoverScript(bool shouldCover)
+    {
+        var display = shouldCover ? "block" : "none";
+
+        return $$"""
+            (() => {
+                const coverId = '__traywebapp-hover-reveal-cover';
+                const root = document.documentElement;
+                if (!root) return;
+
+                let cover = document.getElementById(coverId);
+                if (!cover) {
+                    cover = document.createElement('div');
+                    cover.id = coverId;
+                    cover.setAttribute('aria-hidden', 'true');
+                    cover.style.setProperty('position', 'fixed', 'important');
+                    cover.style.setProperty('inset', '0', 'important');
+                    cover.style.setProperty('width', '100vw', 'important');
+                    cover.style.setProperty('height', '100vh', 'important');
+                    cover.style.setProperty('background', '#000', 'important');
+                    cover.style.setProperty('z-index', '2147483647', 'important');
+                    cover.style.setProperty('pointer-events', 'none', 'important');
+                    root.appendChild(cover);
+                }
+
+                cover.style.setProperty('display', '{{display}}', 'important');
             })();
             """;
     }
